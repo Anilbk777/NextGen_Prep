@@ -10,3 +10,10 @@ wheels/
 .venv
 # environmet
 .env 
+
+.python-version
+
+pyproject.toml  
+
+uv.lock
+    

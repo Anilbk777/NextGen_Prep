@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from presentation.schemas.mcq_schema import MCQCreate, MCQOut
 from presentation.schemas.mock_test_schema import MockTestCreate, MockTestOut
@@ -6,7 +6,9 @@ from presentation.schemas.bulk_mcq_schema import MCQBulkUploadMeta, BulkUploadRe
 from presentation.dependencies import get_db, admin_required
 from infrastructure.repositories.mcq_repo_impl import create_mcq
 from infrastructure.repositories.mock_test_repo_impl import create_mock_test
+from application.admin.bulk_upload_usecase import process_bulk_upload
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +48,36 @@ def add_mock_test(data: MockTestCreate, db: Session = Depends(get_db), admin: di
 
 
 @router.post("/bulk-upload", response_model=BulkUploadResponse)
-def bulk_upload_mcqs(meta: MCQBulkUploadMeta, db: Session = Depends(get_db), admin: dict = Depends(admin_required)):
-    # Placeholder for actual file processing logic
-    # In a real scenario, we'd accept a file and parse it.
-    # For now, we'll return a success message since the logic for parsing isn't provided.
-    logger.info(f"Admin {admin['user_id']} initiated bulk upload for subject: {meta.subject}")
-    return BulkUploadResponse(total_rows=0, inserted=0, failed=0, errors=["Bulk file processing logic not implemented"])
+async def bulk_upload_mcqs(
+    subject: str = Form(...),
+    is_practice_only: bool = Form(False),
+    is_mock_test: bool = Form(False),
+    mock_test_title: str | None = Form(None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db), 
+    admin: dict = Depends(admin_required)
+):
+    try:
+        logger.info(f"Admin {admin['user_id']} bulk uploading {file.filename}")
+        
+        meta = MCQBulkUploadMeta(
+            subject=subject,
+            is_practice_only=is_practice_only,
+            is_mock_test=is_mock_test,
+            mock_test_title=mock_test_title
+        )
+        
+        content = await file.read()
+        result = process_bulk_upload(db, content, file.filename, meta, admin["user_id"])
+        
+        # If it's a mock test, we might want to automatically create the test if title is provided
+        # But for now, we'll just return the MCQ insertion results as requested.
+        
+        return BulkUploadResponse(**result)
+    except ValueError as e:
+        logger.warning(f"Bulk upload validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Bulk upload error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
     

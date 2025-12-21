@@ -25,7 +25,7 @@ def list_mcqs(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error fetching MCQs: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
-        
+
 @router.get("/practice/mcqs", response_model=List[MCQUserPracticeOut])
 def list_practice_mcqs(subject: str = None, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     try:
@@ -106,3 +106,5 @@ def attempt_mcq(
     except Exception as e:
         logger.error(f"Error recording attempt for MCQ {mcq_id} by user {user['user_id']}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
