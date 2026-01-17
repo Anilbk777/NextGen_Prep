@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from infrastructure.db.models.mcq_model import MCQModel, OptionModel
 from infrastructure.db.models.attempt_model import AttemptModel
@@ -26,15 +26,23 @@ def list_mcqs(db: Session = Depends(get_db)):
         logger.error(f"Error fetching MCQs: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
+
 @router.get("/practice/mcqs", response_model=List[MCQUserPracticeOut])
-def list_practice_mcqs(subject: str = None, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+def list_practice_mcqs(
+    subject_id: int = Query(..., description="Subject ID"),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
     try:
-        logger.info(f"User {user['user_id']} fetching practice MCQs for subject: {subject}")
-        mcqs = get_practice_mcqs(db, subject)
+        logger.info(
+            f"User {user['user_id']} fetching practice MCQs for subject: {subject_id}"
+        )
+        mcqs = get_practice_mcqs(db, subject_id)
         return mcqs
     except Exception as e:
         logger.error(f"Error fetching practice MCQs: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
 
 @router.get("/mock-tests", response_model=List[MockTestOut])
 def list_mock_tests(db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
@@ -106,5 +114,3 @@ def attempt_mcq(
     except Exception as e:
         logger.error(f"Error recording attempt for MCQ {mcq_id} by user {user['user_id']}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
-
-

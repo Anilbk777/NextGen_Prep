@@ -16,8 +16,10 @@ def create_mcq(db: Session, mcq_data: MCQCreate, admin_id: int) -> MCQModel:
         mcq = MCQModel(
             question_text=mcq_data.question_text,
             explanation=mcq_data.explanation,
-            subject=mcq_data.subject,
+            subject_id=mcq_data.subject_id, 
             is_practice_only=mcq_data.is_practice_only,
+            difficulty=mcq_data.difficulty,
+            topic_id=mcq_data.topic_id,
             created_by=admin_id
         )
         db.add(mcq)
@@ -25,7 +27,11 @@ def create_mcq(db: Session, mcq_data: MCQCreate, admin_id: int) -> MCQModel:
 
         logger.info(f"Adding {len(mcq_data.options)} options for MCQ {mcq.id}")
         for o in mcq_data.options:
-            option = OptionModel(option_text=o.option_text, is_correct=o.is_correct, mcq_id=mcq.id)
+            option = OptionModel(
+                option_text=o.option_text,
+                is_correct=o.is_correct, 
+                mcq_id=mcq.id
+                )
             db.add(option)
 
         db.commit()

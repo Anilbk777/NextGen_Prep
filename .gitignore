@@ -16,4 +16,6 @@ wheels/
 pyproject.toml  
 
 uv.lock
+
+.uploads/
     
