@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from infrastructure.db.models.notes import Note
+from infrastructure.db.models.topic_model import Topic
 from presentation.schemas.notes import NoteUpdate
 import logging
 from typing import List
@@ -17,6 +18,11 @@ def create_note(
     mime_type: str,
 ) -> Note:
     """Create a new note for a given topic."""
+    # Verify topic exists
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic:
+        logger.warning(f"Note creation failed: Topic {topic_id} not found")
+        raise ValueError(f"Topic with ID {topic_id} does not exist.")
 
     # Optional: basic input validation
     if not title or file_size <= 0:

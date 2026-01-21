@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from presentation.schemas.subject_schema import SubjectCreate, SubjectOut
+from presentation.schemas.subject_schema import PracticeSubjectCreate, PracticeSubjectOut
 from presentation.dependencies import get_db, admin_required
 from infrastructure.repositories.subject_repo_impl import (
-    create_subject,
-    get_all_subjects,
-    get_subject_by_id,
-    update_subject,
-    delete_subject,
+    create_practice_subject,
+    get_all_practice_subjects,
+    get_practice_subject_by_id,
+    update_practice_subject,
+    delete_practice_subject,
 )
 import logging
 
@@ -15,44 +15,44 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/subjects", tags=["Subjects"])
 
 
-@router.post("", response_model=SubjectOut)
+@router.post("", response_model=PracticeSubjectOut)
 def add_subject(
-    subject: SubjectCreate,
+    subject: PracticeSubjectCreate,
     db: Session = Depends(get_db),
     admin: dict = Depends(admin_required),
 ):
     try:
-        return create_subject(db, subject)
+        return create_practice_subject(db, subject)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("", response_model=list[SubjectOut])
+@router.get("", response_model=list[PracticeSubjectOut])
 def list_subjects(db: Session = Depends(get_db), admin: dict = Depends(admin_required)):
-    return get_all_subjects(db)
+    return get_all_practice_subjects(db)
 
 
-@router.get("/{subject_id}", response_model=SubjectOut)
+@router.get("/{subject_id}", response_model=PracticeSubjectOut)
 def get_subject(
     subject_id: int,
     db: Session = Depends(get_db),
     admin: dict = Depends(admin_required),
 ):
     try:
-        return get_subject_by_id(db, subject_id)
+        return get_practice_subject_by_id(db, subject_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.put("/{subject_id}", response_model=SubjectOut)
+@router.patch("/{subject_id}", response_model=PracticeSubjectOut)
 def modify_subject(
     subject_id: int,
-    subject: SubjectCreate,
+    subject: PracticeSubjectCreate,
     db: Session = Depends(get_db),
     admin: dict = Depends(admin_required),
 ):
     try:
-        return update_subject(db, subject_id, subject)
+        return update_practice_subject(db, subject_id, subject)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -64,6 +64,6 @@ def remove_subject(
     admin: dict = Depends(admin_required),
 ):
     try:
-        return delete_subject(db, subject_id)
+        return delete_practice_subject(db, subject_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -3,13 +3,24 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..base import Base
 
-# Association table for many-to-many relationship between MockTest and MCQ
-mock_test_mcqs = Table(
-    "mock_test_mcqs",
+# Association Table for many-to-many relationship
+mock_test_mcq_association = Table(
+    "mock_test_mcq_association",
     Base.metadata,
-    Column("mock_test_id", Integer, ForeignKey("mock_tests.id", ondelete="CASCADE"), primary_key=True),
-    Column("mcq_id", Integer, ForeignKey("mcqs.id", ondelete="CASCADE"), primary_key=True)
+    Column(
+        "mock_test_id",
+        Integer,
+        ForeignKey("mock_tests.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "mcq_id",
+        Integer,
+        ForeignKey("mock_test_mcqs.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
+
 
 class MockTestModel(Base):
     __tablename__ = "mock_tests"
@@ -18,5 +29,9 @@ class MockTestModel(Base):
     title = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
-    questions = relationship("MCQModel", secondary=mock_test_mcqs, back_populates="mock_tests")
+    subjects = relationship(
+        "MockTestSubject", back_populates="mock_test", cascade="all, delete-orphan"
+    )
+    questions = relationship(
+        "MockTestMCQ", secondary=mock_test_mcq_association, back_populates="mock_tests"
+    )

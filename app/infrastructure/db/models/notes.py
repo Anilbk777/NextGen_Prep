@@ -11,17 +11,13 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from ..base import Base
 
-
-
 class Note(Base):
     __tablename__ = "notes"
 
     id = Column(Integer, primary_key=True, index=True)
-
     topic_id = Column(
         Integer, ForeignKey("topics.id", ondelete="CASCADE"), nullable=False
     )
-
     title = Column(String(225), nullable=False)
     file_path = Column(Text, nullable=False)
     file_size = Column(BigInteger, nullable=False)
@@ -30,7 +26,5 @@ class Note(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    # Relationship with Topic
-    topic = relationship(
-        "Topic", back_populates="notes", passive_deletes=True  # target class
-    )
+    # Relationship
+    topic = relationship("Topic", back_populates="notes", passive_deletes=True)

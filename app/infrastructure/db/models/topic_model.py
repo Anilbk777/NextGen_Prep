@@ -7,17 +7,15 @@ class Topic(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    subject_id = Column(
+        Integer, ForeignKey("practice_subjects.id", ondelete="CASCADE"), nullable=False
+    )
 
     # Relationships
-    subject = relationship("Subject", back_populates="topics",passive_deletes=True)
-    mcqs = relationship(
-        "MCQModel",
-        back_populates="topic",
-        cascade="all, delete-orphan"
-        )
-    notes = relationship(
-        "Note",
-        back_populates="topic",
-        cascade="all, delete-orphan"
+    subject = relationship(
+        "PracticeSubject", back_populates="topics", passive_deletes=True
     )
+    mcqs = relationship(
+        "PracticeMCQ", back_populates="topic", cascade="all, delete-orphan"
+    )
+    notes = relationship("Note", back_populates="topic", cascade="all, delete-orphan")

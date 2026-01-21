@@ -14,8 +14,10 @@ from app.presentation.api.routers import (
     topic_router,
     bulk_upload_router,
     note_router,
+    auth_routes,
+    user_routes,
+    practice_router,
 )
-from app.presentation.api.v1.auth_routes import router as auth_router
 
 
 from app.infrastructure.db.init_db import init_db
@@ -55,17 +57,14 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Include routers
-# app.include_router(admin_router, prefix="/admin", tags=["Admin (MCQs)"])
-# app.include_router(user_router, prefix="/user", tags=["User (MCQs)"])
-
-app.include_router(auth_router)
+app.include_router(auth_routes.router)
 app.include_router(mcq_router.router)
 app.include_router(subject_router.router)
 app.include_router(topic_router.router)
 app.include_router(note_router.router)
 app.include_router(bulk_upload_router.router)
-
+app.include_router(user_routes.router)
+app.include_router(practice_router.router)
 
 # Optional root endpoint
 @app.get("/")

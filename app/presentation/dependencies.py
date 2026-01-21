@@ -12,7 +12,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 # oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-
 def get_db():
     db = SessionLocal()
     try:
@@ -30,8 +29,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
 
     # --- [ BLOCK 1: TESTING MODE ] ---
     if not token:
-        logger.info("Auth bypass triggered: Using Mock Test User (ADMIN)")
-        return {"user_id": 1, "role": "ADMIN"}
+        logger.info("Auth bypass triggered: Using Mock Test User (USER)")
+        return {"user_id": 1, "role": "USER"}
     # ----------------------------------
 
     # --- [ BLOCK 2: PRODUCTION MODE ] ---
@@ -58,10 +57,12 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
 
 def admin_required(current_user: dict = Depends(get_current_user)) -> dict:
     if current_user.get("role") != "ADMIN":
-        logger.warning(f"Access denied for non-admin user_id: {current_user.get('user_id')}")
+        logger.warning(
+            f"Access denied for non-admin user_id: {current_user.get('user_id')}"
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Administrative privileges required"
+            detail="Administrative privileges required",
         )
     logger.info(f"Admin access granted for user_id: {current_user.get('user_id')}")
     return current_user

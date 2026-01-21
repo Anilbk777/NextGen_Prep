@@ -17,5 +17,5 @@ pyproject.toml
 
 uv.lock
 
-.uploads/
+.uploads
     

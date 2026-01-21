@@ -20,15 +20,16 @@ router = APIRouter(prefix="/topics", tags=["Topics"])
 @router.post("", response_model=TopicOut)
 def add_topic(
     topic: TopicCreate,
+    subject_id: int,
     db: Session = Depends(get_db),
     admin: dict = Depends(admin_required),
 ):
     """Create a new topic for organizing MCQs"""
     try:
         logger.info(
-            f"Admin {admin['user_id']} creating topic: {topic.name} for subject_id: {topic.subject_id}"
+            f"Admin {admin['user_id']} creating topic: {topic.name} for subject_id: {subject_id}"
         )
-        result = create_topic(db, topic)
+        result = create_topic(db, subject_id, topic)
         return result
     except ValueError as e:
         logger.warning(f"Topic creation validation error: {e}")
@@ -79,7 +80,7 @@ def get_topic(
 
 
 # ==================== UPDATE ====================
-@router.put("/{topic_id}", response_model=TopicOut)
+@router.patch("/{topic_id}", response_model=TopicOut)
 def modify_topic(
     topic_id: int,
     topic: TopicCreate,

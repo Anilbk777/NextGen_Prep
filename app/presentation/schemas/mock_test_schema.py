@@ -1,27 +1,35 @@
-# mock_test_schema.py
-# from pydantic import BaseModel
-# from typing import List, Optional
-
-
-# class MockTestCreate(BaseModel):
-#     title: str
-#     subject_id: Optional[int] = None
-#     mcq_ids: List[int]
-
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
+from typing import List
 
 
-class MockTestCreate(BaseModel):
-    title: str = Field(..., min_length=3)
-    mcq_ids: List[int] = Field(..., min_length=1)
+class OptionCreate(BaseModel):
+    option_text: str = Field(..., min_length=1, max_length=300)
+    is_correct: bool = Field(...)
 
-    @field_validator("mcq_ids")
-    @classmethod
-    def validate_mcq_ids(cls, mcq_ids):
-        if len(set(mcq_ids)) != len(mcq_ids):
-            raise ValueError("Duplicate MCQ IDs are not allowed")
-        return mcq_ids
+
+class QuestionCreate(BaseModel):
+    subject: str = Field(..., min_length=1, max_length=100)
+    question_text: str = Field(..., min_length=1, max_length=500)
+    options: List[OptionCreate] = Field(..., min_items=4, max_items=4)
+
+    @field_validator("options")
+    def validate_options(cls, v):
+        correct_count = sum(opt.is_correct for opt in v)
+        if correct_count != 1:
+            raise ValueError("Exactly one option must be marked as correct")
+        return v
+        
+    @field_validator("subject")
+    def validate_subject(cls, v):
+        if not v:
+            raise ValueError("Subject cannot be empty")
+        v = v.strip().title()
+        return v
+
+
+class MockTestBulkCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    questions: List[QuestionCreate] = Field(..., min_items=1)
 
 
 class MockTestOut(BaseModel):
@@ -29,42 +37,5 @@ class MockTestOut(BaseModel):
     title: str
     total_questions: int
 
-    class Config:
-        from_attributes = True
-
-
-# ==================== Detailed Schemas for GET endpoint ====================
-
-class OptionDetailOut(BaseModel):
-    """Option with correct answer indicated"""
-    id: int
-    option_text: str
-    is_correct: bool
-    
-    class Config:
-        from_attributes = True
-
-
-class QuestionDetailOut(BaseModel):
-    """Question with all details including subject, options, and correct answer"""
-    id: int
-    question_text: str
-    subject_name: str  # Subject name instead of just ID
-    subject_id: int
-    explanation: Optional[str] = None
-    difficulty: Optional[str] = None
-    options: List[OptionDetailOut]
-    
-    class Config:
-        from_attributes = True
-
-
-class MockTestDetailOut(BaseModel):
-    """Detailed mock test with all questions and their details"""
-    id: int
-    title: str
-    total_questions: int
-    questions: List[QuestionDetailOut]
-    
     class Config:
         from_attributes = True

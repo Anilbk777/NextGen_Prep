@@ -1,17 +1,26 @@
-from pydantic import BaseModel
+from pydantic import BaseModel,Field, field_validator
 from typing import Optional
 
 # ------------------ Subject Schemas ------------------
 
-class SubjectCreate(BaseModel):
-    name: str
+class PracticeSubjectCreate(BaseModel):
+    name: str = Field(..., min_length=1,max_length=300)
     description: Optional[str] = None
 
-class SubjectOut(BaseModel):
+    # convert the name of the subject to title case 
+    @field_validator("name", mode="before")
+    def title_case(cls, v):
+        return v.title()
+
+class PracticeSubjectOut(BaseModel):
     id: int
-    name: str
+    name: str = Field(..., min_length=1,max_length=300)
     description: Optional[str] = None
-    is_from_mock_test: bool = False
+
+    # convert the name of the subject to title case
+    @field_validator("name", mode="before")
+    def title_case(cls, v):
+        return v.title()
 
     class Config:
         from_attributes = True

@@ -1,31 +1,30 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from presentation.schemas.bulk_mcq_schema import BulkUploadResponse
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from sqlalchemy.orm import Session
 from presentation.dependencies import get_db, admin_required
 
-from application.admin.bulk_upload_usecase import (
-    process_practice_bulk_upload
-
-)
-from presentation.schemas.bulk_mcq_schema import (
+from presentation.schemas.practice_bulk_schema import (
     PracticeBulkUploadMeta,
-    BulkUploadResponse,
+    PracticeBulkUploadResponse,
 )
+from infrastructure.repositories.practice_bulk_repo_impl import PracticeBulkRepository
+from infrastructure.repositories.mock_test_repo_impl import MockTestRepository
 from presentation.schemas.mock_test_schema import (
-    MockTestOut
-
+    MockTestOut,
+    MockTestBulkCreate,
+    QuestionCreate,
+    OptionCreate
 )
-
 
 import logging
+import pandas as pd
+import io
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bulk-upload", tags=["bulk_uplod_mcqs"])
 
-@router.post("/practice", response_model=BulkUploadResponse)
+@router.post("/practice", response_model=PracticeBulkUploadResponse)
 async def bulk_upload_practice(
-    subject_id: int = Form(...),
     topic_id: int = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -33,16 +32,13 @@ async def bulk_upload_practice(
 ):
     try:
         logger.info(
-            f"Admin {admin['user_id']} bulk uploading practice MCQs for subject_id: {subject_id}"
-        )
-
-        meta = PracticeBulkUploadMeta(
-            subject_id=subject_id, topic_id=topic_id, is_practice_only=True
+            f"Admin {admin['user_id']} bulk uploading practice MCQs for topic_id: {topic_id}"
         )
 
         file_content = await file.read()
-        return process_practice_bulk_upload(
-            db, file_content, file.filename, meta, admin["user_id"]
+        repo = PracticeBulkRepository(db)
+        return repo.process_bulk_upload(
+            file_content, file.filename, topic_id, admin["user_id"]
         )
 
     except ValueError as e:
@@ -78,9 +74,6 @@ async def bulk_upload_mock_test(
         file_content = await file.read()
 
         # Parse based on file type
-        import pandas as pd
-        import io
-
         if file.filename.endswith(".csv"):
             try:
                 df = pd.read_csv(
@@ -119,35 +112,76 @@ async def bulk_upload_mock_test(
                 f"Expected columns: {', '.join(required_cols)}"
             )
 
-        # Convert DataFrame to list of dicts
+        # Basic data cleaning: drop completely empty rows and handle NaNs
+        df = df.dropna(subset=["question_text", "correct_answer"], how="any")
         questions_data = df.to_dict("records")
 
         if not questions_data:
-            raise ValueError("File contains no data rows")
+            raise ValueError("File contains no valid data rows (question_text and correct_answer are required)")
 
-        logger.info(f"Parsed {len(questions_data)} questions from file")
+        logger.info(f"Parsed {len(questions_data)} valid questions from file")
 
         # Call repository method to create mock test
-        from infrastructure.repositories.mock_test_repo_impl import (
-            bulk_create_mock_test,
-        )
+        try:
+            # Prepare validated data for repository
+            validated_questions = []
+            for q in questions_data:
+                # Helper to get string safely
+                def get_str(key):
+                    val = q.get(key)
+                    return str(val).strip() if not pd.isna(val) else ""
 
-        mock_test = bulk_create_mock_test(
-            db=db,
-            title=mock_test_title,
-            questions_data=questions_data,
-            admin_id=admin["user_id"],
-        )
-
-        return MockTestOut(
-            id=mock_test.id,
-            title=mock_test.title,
-            total_questions=len(mock_test.questions),
-        )
+                # Determine which option is correct
+                correct_val = get_str("correct_answer")
+                
+                options = []
+                for i in range(1, 5):
+                    opt_text = get_str(f"option{i}")
+                    # Correct if matches "1", "2", "3", "4" or exact text
+                    # We handle the case where correct_val might be "1.0" from Excel
+                    is_correct = False
+                    try:
+                        if float(correct_val) == float(i):
+                            is_correct = True
+                    except ValueError:
+                        if correct_val == opt_text:
+                            is_correct = True
+                    
+                    options.append(OptionCreate(text=opt_text, is_correct=is_correct))
+                
+                validated_questions.append(QuestionCreate(
+                    subject=get_str("subject"),
+                    question_text=get_str("question_text"),
+                    options=options
+                ))
+            
+            bulk_data = MockTestBulkCreate(title=mock_test_title, questions=validated_questions)
+            
+            repo = MockTestRepository(db)
+            mock_test = repo.bulk_create_mock_test(
+                data=bulk_data,
+                admin_id=admin["user_id"]
+            )
+            
+            return MockTestOut(
+                id=mock_test.id,
+                title=mock_test.title,
+                total_questions=len(mock_test.questions),
+            )
+        except ValidationError as e:
+            logger.warning(f"Schema validation error: {e}")
+            # Format Pydantic errors for easier reading
+            errors = []
+            for error in e.errors():
+                loc = " -> ".join(str(l) for l in error['loc'])
+                errors.append(f"{loc}: {error['msg']}")
+            raise HTTPException(status_code=400, detail={"msg": "Data validation failed", "errors": errors})
 
     except ValueError as e:
         logger.warning(f"Bulk upload validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Bulk upload error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
