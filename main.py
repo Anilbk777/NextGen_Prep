@@ -17,6 +17,7 @@ from app.presentation.api.routers import (
     auth_routes,
     user_routes,
     practice_router,
+    mock_test_router,
 )
 
 
@@ -65,6 +66,7 @@ app.include_router(note_router.router)
 app.include_router(bulk_upload_router.router)
 app.include_router(user_routes.router)
 app.include_router(practice_router.router)
+app.include_router(mock_test_router.router)
 
 # Optional root endpoint
 @app.get("/")

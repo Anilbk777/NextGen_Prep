@@ -77,14 +77,14 @@ async def bulk_upload_mock_test(
         if file.filename.endswith(".csv"):
             try:
                 df = pd.read_csv(
-                    io.BytesIO(file_content), on_bad_lines="skip", engine="python"
+                    io.BytesIO(file_content), on_bad_lines="skip", engine="python", keep_default_na=False
                 )
             except Exception as e:
                 logger.error(f"Error parsing CSV: {e}")
                 raise ValueError(f"Error parsing CSV file: {str(e)}")
         elif file.filename.endswith((".xlsx", ".xls")):
             try:
-                df = pd.read_excel(io.BytesIO(file_content))
+                df = pd.read_excel(io.BytesIO(file_content), keep_default_na=False)
             except Exception as e:
                 logger.error(f"Error parsing Excel: {e}")
                 raise ValueError(f"Error parsing Excel file: {str(e)}")
@@ -125,29 +125,52 @@ async def bulk_upload_mock_test(
         try:
             # Prepare validated data for repository
             validated_questions = []
-            for q in questions_data:
+            for idx, q in enumerate(questions_data):
                 # Helper to get string safely
-                def get_str(key):
+                def get_str(key, default=""):
                     val = q.get(key)
-                    return str(val).strip() if not pd.isna(val) else ""
+                    if pd.isna(val) or str(val).strip() == "":
+                        return default
+                    return str(val).strip()
 
                 # Determine which option is correct
                 correct_val = get_str("correct_answer")
                 
                 options = []
-                for i in range(1, 5):
-                    opt_text = get_str(f"option{i}")
-                    # Correct if matches "1", "2", "3", "4" or exact text
-                    # We handle the case where correct_val might be "1.0" from Excel
-                    is_correct = False
-                    try:
-                        if float(correct_val) == float(i):
-                            is_correct = True
-                    except ValueError:
-                        if correct_val == opt_text:
-                            is_correct = True
+                correct_found_count = 0
+                for i in range(1, 4 + 1):
+                    opt_text = get_str(f"option{i}", default="None")
                     
-                    options.append(OptionCreate(text=opt_text, is_correct=is_correct))
+                    is_correct = False
+                    # Case 1: Exact text match (highly recommended for CSV/Excel)
+                    if correct_val.lower() == opt_text.lower():
+                        is_correct = True
+                    
+                    # Case 2: Numeric comparison (handles '7' matching '7.0' or index '1')
+                    if not is_correct:
+                        try:
+                            cv_float = float(correct_val)
+                            # Match if correct_val is a number matching the option text number
+                            if cv_float == float(opt_text):
+                                is_correct = True
+                            # Match if correct_val is a number matching the option index (1-based)
+                            elif cv_float == float(i):
+                                is_correct = True
+                        except (ValueError, TypeError):
+                            pass
+                    
+                    if is_correct:
+                        correct_found_count += 1
+                    
+                    options.append(OptionCreate(option_text=opt_text, is_correct=is_correct))
+
+                # DEBUG LOGGING: Help the user identify which row is failing the "Exactly one correct" rule
+                if correct_found_count != 1:
+                    logger.warning(
+                        f"DEBUG: Correct answer mismatch at Row {idx + 2}. "
+                        f"Expected: '{correct_val}', Found matches: {correct_found_count}. "
+                        f"Options: [1: '{get_str('option1', 'None')}', 2: '{get_str('option2', 'None')}', 3: '{get_str('option3', 'None')}', 4: '{get_str('option4', 'None')}']"
+                    )
                 
                 validated_questions.append(QuestionCreate(
                     subject=get_str("subject"),

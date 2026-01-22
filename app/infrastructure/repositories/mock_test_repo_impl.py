@@ -51,7 +51,7 @@ class MockTestRepository:
         for opt_data in question_data.options:
             option = MockTestOption(
                 mcq_id=mcq.id,
-                option_text=opt_data.text.strip(),
+                option_text=opt_data.option_text.strip(),
                 is_correct=opt_data.is_correct,
             )
             self.db.add(option)

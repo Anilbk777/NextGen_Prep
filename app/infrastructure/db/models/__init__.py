@@ -15,6 +15,12 @@ from .subject_model import PracticeSubject, MockTestSubject
 from . topic_model import Topic
 from .user_model import UserModel
 from .practice_session_model import PracticeSessionModel, PracticeSessionQuestionModel
+from .mock_test_session import (
+    MockTestSessionModel,
+    MockTestSessionQuestionModel,
+    MockTestSessionAnswerModel,
+)
+
 
 __all__ = [
     "AttemptModel",
@@ -31,4 +37,8 @@ __all__ = [
     "UserModel",
     "PracticeSessionModel",
     "PracticeSessionQuestionModel",
+
+    "MockTestSessionModel",
+    "MockTestSessionQuestionModel",
+    "MockTestSessionAnswerModel",
 ]
