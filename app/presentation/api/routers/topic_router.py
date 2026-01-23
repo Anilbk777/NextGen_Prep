@@ -43,18 +43,17 @@ def add_topic(
 @router.get("", response_model=list[TopicOut])
 def list_topics(
     subject_id: int | None = Query(None),
-    db: Session = Depends(get_db),
-    admin: dict = Depends(admin_required),
+    db: Session = Depends(get_db)
 ):
     """Get all topics, optionally filtered by subject_id"""
     try:
         if subject_id:
             logger.info(
-                f"Admin {admin['user_id']} fetching topics for subject_id: {subject_id}"
+                f" fetching topics for subject_id: {subject_id}"
             )
             topics = get_topics_by_subject(db, subject_id)
         else:
-            logger.info(f"Admin {admin['user_id']} fetching all topics")
+            logger.info(f" fetching all topics")
             topics = get_all_topics(db)
         return topics
     except Exception as e:
@@ -64,11 +63,11 @@ def list_topics(
 
 @router.get("/{topic_id}", response_model=TopicOut)
 def get_topic(
-    topic_id: int, db: Session = Depends(get_db), admin: dict = Depends(admin_required)
+    topic_id: int, db: Session = Depends(get_db)
 ):
     """Get a specific topic by ID"""
     try:
-        logger.info(f"Admin {admin['user_id']} fetching topic {topic_id}")
+        logger.info(f" fetching topic {topic_id}")
         topic = get_topic_by_id(db, topic_id)
         return topic
     except ValueError as e:

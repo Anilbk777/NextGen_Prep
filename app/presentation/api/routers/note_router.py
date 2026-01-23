@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.presentation.dependencies import get_db
+from app.presentation.dependencies import get_db, admin_required
 from app.infrastructure.repositories.note_repo import (
     create_note,
     get_notes_by_topic,
@@ -28,6 +28,7 @@ def upload_note(
     title: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    admin: dict = Depends(admin_required),
 ):
     file_location = os.path.join(UPLOAD_DIR, file.filename)
     file_url = f"{BASE_URL}/{file.filename}"  # URL to serve to frontend

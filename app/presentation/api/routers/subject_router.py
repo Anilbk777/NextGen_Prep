@@ -28,7 +28,7 @@ def add_subject(
 
 
 @router.get("", response_model=list[PracticeSubjectOut])
-def list_subjects(db: Session = Depends(get_db), admin: dict = Depends(admin_required)):
+def list_subjects(db: Session = Depends(get_db)):
     return get_all_practice_subjects(db)
 
 
@@ -36,7 +36,6 @@ def list_subjects(db: Session = Depends(get_db), admin: dict = Depends(admin_req
 def get_subject(
     subject_id: int,
     db: Session = Depends(get_db),
-    admin: dict = Depends(admin_required),
 ):
     try:
         return get_practice_subject_by_id(db, subject_id)
