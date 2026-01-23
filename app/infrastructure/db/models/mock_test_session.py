@@ -12,7 +12,7 @@ class MockTestSessionModel(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    mock_test_id = Column(Integer, ForeignKey("mock_tests.id"), nullable=False)
+    mock_test_id = Column(Integer, ForeignKey("mock_tests.id", ondelete="CASCADE"), nullable=False)
 
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     ends_at = Column(DateTime(timezone=True), nullable=False)

@@ -3,6 +3,11 @@ from infrastructure.db.models.mock_test_model import MockTestModel, mock_test_mc
 from infrastructure.db.models.mcq_model import MockTestMCQ, MockTestOption, PracticeMCQ
 from infrastructure.db.models.subject_model import MockTestSubject
 from presentation.schemas.mock_test_schema import MockTestBulkCreate, QuestionCreate
+from infrastructure.db.models.mock_test_session import (
+    MockTestSessionModel,
+    MockTestSessionAnswerModel,
+    MockTestSessionQuestionModel,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -138,3 +143,62 @@ class MockTestRepository:
             self.db.rollback()
             raise
 
+    def delete_mock_test(self, mock_test_id: int) -> None:
+        """Delete a mock test and all its associated subjects, questions, and options."""
+        try:
+            logger.info(f"Starting deletion of mock test {mock_test_id}")
+
+            # 1. Delete all associated sessions first (and their dependent data)
+            # Delete session answers
+            self.db.query(MockTestSessionAnswerModel).filter(
+                MockTestSessionAnswerModel.session_id.in_(
+                    self.db.query(MockTestSessionModel.id).filter(
+                        MockTestSessionModel.mock_test_id == mock_test_id
+                    )
+                )
+            ).delete(synchronize_session=False)
+
+            # Delete session questions
+            self.db.query(MockTestSessionQuestionModel).filter(
+                MockTestSessionQuestionModel.session_id.in_(
+                    self.db.query(MockTestSessionModel.id).filter(
+                        MockTestSessionModel.mock_test_id == mock_test_id
+                    )
+                )
+            ).delete(synchronize_session=False)
+
+            # Delete sessions
+            self.db.query(MockTestSessionModel).filter(
+                MockTestSessionModel.mock_test_id == mock_test_id
+            ).delete(synchronize_session=False)
+
+            # 2. Delete all associated questions and options
+            self.db.query(MockTestOption).filter(
+                MockTestOption.mcq_id.in_(
+                    self.db.query(MockTestMCQ.id).filter(
+                        MockTestMCQ.mock_test_id == mock_test_id
+                    )
+                )
+            ).delete(synchronize_session=False)
+
+            self.db.query(MockTestMCQ).filter(
+                MockTestMCQ.mock_test_id == mock_test_id
+            ).delete(synchronize_session=False)
+
+            # 2. Delete all associated subjects
+            self.db.query(MockTestSubject).filter(
+                MockTestSubject.mock_test_id == mock_test_id
+            ).delete(synchronize_session=False)
+
+            # 3. Delete the mock test itself
+            self.db.query(MockTestModel).filter(
+                MockTestModel.id == mock_test_id
+            ).delete(synchronize_session=False)
+
+            self.db.commit()
+            logger.info(f"Successfully deleted mock test {mock_test_id}")
+
+        except Exception as e:
+            logger.error(f"Error deleting mock test {mock_test_id}: {e}", exc_info=True)
+            self.db.rollback()
+            raise
