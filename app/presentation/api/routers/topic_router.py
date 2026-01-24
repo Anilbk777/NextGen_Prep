@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from presentation.schemas.topic_schema import TopicCreate, TopicOut
+from infrastructure.db.models.topic_model import Topic
 from presentation.dependencies import get_db, admin_required
 from infrastructure.repositories.topic_repo_impl import (
     create_topic,
@@ -115,3 +116,9 @@ def remove_topic(
     except Exception as e:
         logger.error(f"Error deleting topic: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+# count the number of topics  
+@router.get("/count", response_model=int)
+def count_topics(db: Session = Depends(get_db)):
+    return db.query(Topic).count()

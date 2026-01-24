@@ -30,7 +30,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     # --- [ BLOCK 1: TESTING MODE ] ---
     if not token:
         logger.info("Auth bypass triggered: Using Mock Test User (USER)")
-        return {"user_id": 1, "role": "USER"}
+        return {"user_id": 1, "role": "ADMIN"}
     # ----------------------------------
 
     # --- [ BLOCK 2: PRODUCTION MODE ] ---

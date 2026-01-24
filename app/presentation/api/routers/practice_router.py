@@ -127,3 +127,5 @@ def get_session_summary(
     except Exception as e:
         logger.error(f"Unexpected error fetching summary for session {session_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+

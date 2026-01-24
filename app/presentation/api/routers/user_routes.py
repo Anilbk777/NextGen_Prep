@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from infrastructure.db.models.mcq_model import PracticeMCQ, OptionModel, MockTestMCQ
 from infrastructure.db.models.attempt_model import AttemptModel
 from infrastructure.db.models.mock_test_model import MockTestModel
+from infrastructure.db.models.user_model import UserModel
 from presentation.schemas.mcq_schema import PracticeMCQOut, MockTestMCQOut
 from presentation.schemas.mock_test_schema import MockTestOut
 from presentation.dependencies import get_db, get_current_user, admin_required
@@ -52,3 +53,14 @@ def delete_mock_test(
     except Exception as e:
         logger.error(f"Error deleting mock test: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+#count the numbers of mock tests
+@router.get("/count", response_model=int)
+def count_mock_tests(db: Session = Depends(get_db)):
+    return db.query(MockTestModel).count()
+
+# count the numbers of users but don't count admin
+@router.get("/users/count", response_model=int)
+def count_users(db: Session = Depends(get_db)):
+    return db.query(UserModel).filter(UserModel.role != "ADMIN").count()

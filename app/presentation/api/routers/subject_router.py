@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from infrastructure.db.models.subject_model import PracticeSubject
 from presentation.schemas.subject_schema import PracticeSubjectCreate, PracticeSubjectOut
 from presentation.dependencies import get_db, admin_required
 from infrastructure.repositories.subject_repo_impl import (
@@ -66,3 +67,9 @@ def remove_subject(
         return delete_practice_subject(db, subject_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# count the number of subjects  
+@router.get("/count", response_model=int)
+def count_subjects(db: Session = Depends(get_db)):
+    return db.query(PracticeSubject).count()

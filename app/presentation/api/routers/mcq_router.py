@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from infrastructure.db.models.mcq_model import PracticeMCQ
 from presentation.schemas.mcq_schema import PracticeMCQCreate, PracticeMCQOut, PracticeMCQUpdate
 from presentation.dependencies import get_db, admin_required
 from infrastructure.repositories.mcq_repo_impl import create_mcq, get_mcqs_by_topic_id, delete_mcq_by_id, update_mcq_by_id
@@ -79,3 +80,9 @@ def delete_mcq(
     except Exception as e:
         logger.error(e, exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+#count the numbers of practice mcqs
+@router.get("/count", response_model=int)
+def count_mcqs(db: Session = Depends(get_db)):
+    return db.query(PracticeMCQ).count()

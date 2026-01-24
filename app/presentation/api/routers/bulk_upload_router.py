@@ -63,7 +63,7 @@ async def bulk_upload_mock_test(
     - subject: Subject name (will be auto-created if it doesn't exist)
     - question_text: The question text
     - option1, option2, option3, option4: The four options
-    - correct_answer: Either "1", "2", "3", "4" or the exact text of the correct option
+    - correct_answer: the exact text of the correct option
     """
     try:
         logger.info(
