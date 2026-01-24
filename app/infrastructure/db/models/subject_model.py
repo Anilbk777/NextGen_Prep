@@ -27,6 +27,7 @@ class PracticeSubject(Base):
     )
 
     user_subjects = relationship("UserSubject", back_populates="subject", cascade="all, delete-orphan",passive_deletes=True)
+    sessions = relationship("LearningSession", back_populates="subject", cascade="all, delete-orphan")
 
 class MockTestSubject(Base):
     __tablename__ = "mock_test_subjects"

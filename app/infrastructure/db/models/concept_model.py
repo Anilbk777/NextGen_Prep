@@ -17,6 +17,8 @@ class Concept(Base):
     
     topic = relationship("Topic", back_populates="concepts", passive_deletes=True)
     templates = relationship("Template", back_populates="concept", cascade="all, delete-orphan")
+    responses = relationship("UserResponse", back_populates="concept", cascade="all, delete-orphan")
+    masteries = relationship("UserMastery", back_populates="concept", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint("topic_id", "name", name="uq_topic_concept"),

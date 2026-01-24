@@ -10,6 +10,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/mcqs", tags=["MCQs"])
 
 
+
+#count the numbers of practice mcqs
+@router.get("/count", response_model=int)
+def count_mcqs(db: Session = Depends(get_db)):
+    return db.query(PracticeMCQ).count()
+
+
 @router.post("", response_model=PracticeMCQOut)
 def add_mcq(
     topic_id: int,
@@ -82,7 +89,3 @@ def delete_mcq(
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
-#count the numbers of practice mcqs
-@router.get("/count", response_model=int)
-def count_mcqs(db: Session = Depends(get_db)):
-    return db.query(PracticeMCQ).count()

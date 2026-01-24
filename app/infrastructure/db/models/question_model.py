@@ -21,3 +21,4 @@ class Question(Base):
     guessing = Column(Float, default=0.25)  # IRT c
     
     template = relationship("Template", back_populates="questions", passive_deletes=True)
+    responses = relationship("UserResponse", back_populates="question", cascade="all, delete-orphan")

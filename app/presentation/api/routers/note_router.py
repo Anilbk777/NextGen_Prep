@@ -8,6 +8,7 @@ from app.infrastructure.repositories.note_repo import (
     update_note,
     delete_note,
 )
+from app.infrastructure.db.models.notes import Note
 from app.presentation.schemas.notes import NoteResponse,NoteUpdate
 import os
 import logging
@@ -16,6 +17,12 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
+
+# count the numbers of notes
+@router.get("/count", response_model=int)
+def count_notes(db: Session = Depends(get_db)):
+    return db.query(Note).count()
+
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -133,3 +140,4 @@ def remove_note(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+

@@ -16,6 +16,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/subjects", tags=["Subjects"])
 
 
+# count the number of subjects  
+@router.get("/count", response_model=int)
+def count_subjects(db: Session = Depends(get_db)):
+    return db.query(PracticeSubject).count()
+
+
 @router.post("", response_model=PracticeSubjectOut)
 def add_subject(
     subject: PracticeSubjectCreate,
@@ -69,7 +75,3 @@ def remove_subject(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# count the number of subjects  
-@router.get("/count", response_model=int)
-def count_subjects(db: Session = Depends(get_db)):
-    return db.query(PracticeSubject).count()

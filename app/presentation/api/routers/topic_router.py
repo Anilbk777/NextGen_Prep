@@ -14,7 +14,13 @@ from infrastructure.repositories.topic_repo_impl import (
 import logging
 
 logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/topics", tags=["Topics"])
+# ==================== STATS ====================
+# count the number of topics  
+@router.get("/count", response_model=int)
+def count_topics(db: Session = Depends(get_db)):
+    return db.query(Topic).count()
 
 
 # ==================== CREATE ====================
@@ -118,7 +124,3 @@ def remove_topic(
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
-# count the number of topics  
-@router.get("/count", response_model=int)
-def count_topics(db: Session = Depends(get_db)):
-    return db.query(Topic).count()
