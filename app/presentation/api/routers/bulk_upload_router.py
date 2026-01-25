@@ -136,32 +136,49 @@ async def bulk_upload_mock_test(
                 # Determine which option is correct
                 correct_val = get_str("correct_answer")
                 
-                options = []
-                correct_found_count = 0
+                # First pass: collect all options and determine which one is correct
+                option_texts = []
                 for i in range(1, 4 + 1):
                     opt_text = get_str(f"option{i}", default="None")
-                    
-                    is_correct = False
-                    # Case 1: Exact text match (highly recommended for CSV/Excel)
+                    option_texts.append(opt_text)
+                
+                # Find the correct option index (0-based)
+                correct_index = None
+                
+                # Case 1: Exact text match (highest priority)
+                for i, opt_text in enumerate(option_texts):
                     if correct_val.lower() == opt_text.lower():
-                        is_correct = True
-                    
-                    # Case 2: Numeric comparison (handles '7' matching '7.0' or index '1')
-                    if not is_correct:
-                        try:
-                            cv_float = float(correct_val)
-                            # Match if correct_val is a number matching the option text number
-                            if cv_float == float(opt_text):
-                                is_correct = True
-                            # Match if correct_val is a number matching the option index (1-based)
-                            elif cv_float == float(i):
-                                is_correct = True
-                        except (ValueError, TypeError):
-                            pass
-                    
-                    if is_correct:
-                        correct_found_count += 1
-                    
+                        correct_index = i
+                        break
+                
+                # Case 2: Numeric comparison (only if Case 1 didn't find a match)
+                if correct_index is None:
+                    try:
+                        cv_float = float(correct_val)
+                        # Try matching with option text as number
+                        for i, opt_text in enumerate(option_texts):
+                            try:
+                                if cv_float == float(opt_text):
+                                    correct_index = i
+                                    break
+                            except (ValueError, TypeError):
+                                pass
+                        
+                        # Try matching with 1-based index (only if still not found)
+                        if correct_index is None:
+                            index_as_int = int(cv_float)
+                            if 1 <= index_as_int <= 4:
+                                correct_index = index_as_int - 1  # Convert to 0-based
+                    except (ValueError, TypeError):
+                        pass
+                
+                # Count how many correct answers we found (should be exactly 1)
+                correct_found_count = 1 if correct_index is not None else 0
+                
+                # Second pass: create OptionCreate objects with correct marking
+                options = []
+                for i, opt_text in enumerate(option_texts):
+                    is_correct = (i == correct_index)
                     options.append(OptionCreate(option_text=opt_text, is_correct=is_correct))
 
                 # DEBUG LOGGING: Help the user identify which row is failing the "Exactly one correct" rule
