@@ -7,6 +7,7 @@ from app.infrastructure.repositories.note_repo import (
     get_note_by_id,
     update_note,
     delete_note,
+    get_all_notes,
 )
 from app.infrastructure.db.models.notes import Note
 from app.presentation.schemas.notes import NoteResponse,NoteUpdate
@@ -28,6 +29,18 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 BASE_URL = "http://127.0.0.1:8000/uploads"  # base URL for frontend
 
+# get all notes 
+
+@router.get("/all", response_model=List[NoteResponse])
+def get_all(db: Session = Depends(get_db)):
+    try:
+        return get_all_notes(db)
+    except Exception as e:
+        logger.error(f"Failed to retrieve notes: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not retrieve notes: {str(e)}",
+        )
 
 @router.post("/", response_model=NoteResponse)
 def upload_note(
@@ -73,7 +86,7 @@ def upload_note(
     response_model=List[NoteResponse],
     summary="Get all notes for a topic",
 )
-def get_notes(topic_id: int, db: Session = Depends(get_db)):
+def get_notes_of_topic(topic_id: int, db: Session = Depends(get_db)):
     """
     Retrieve all notes associated with a given topic.
     """
@@ -140,4 +153,5 @@ def remove_note(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
 
