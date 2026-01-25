@@ -8,6 +8,7 @@ from presentation.schemas.practice_bulk_schema import (
 )
 from infrastructure.repositories.practice_bulk_repo_impl import PracticeBulkRepository
 from infrastructure.repositories.mock_test_repo_impl import MockTestRepository
+from infrastructure.db.models.mock_test_model import MockTestModel
 from presentation.schemas.mock_test_schema import (
     MockTestOut,
     MockTestBulkCreate,
@@ -197,7 +198,18 @@ async def bulk_upload_mock_test(
             
             bulk_data = MockTestBulkCreate(title=mock_test_title, questions=validated_questions)
             
+            # Check if mock test with this title already exists
             repo = MockTestRepository(db)
+            existing_test = db.query(MockTestModel).filter(
+                MockTestModel.title.ilike(mock_test_title.strip())
+            ).first()
+            
+            if existing_test:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"A mock test with the title '{mock_test_title}' already exists. Please use a different title."
+                )
+            
             mock_test = repo.bulk_create_mock_test(
                 data=bulk_data,
                 admin_id=admin["user_id"]
