@@ -22,5 +22,6 @@ class LearningSession(Base):
     user = relationship("UserModel", back_populates="sessions")
     subject = relationship("PracticeSubject", back_populates="sessions")
     topic = relationship("Topic", back_populates="sessions")
+    responses = relationship("UserResponse", back_populates="session", cascade="all, delete-orphan")
 
     

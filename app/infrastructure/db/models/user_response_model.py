@@ -14,6 +14,7 @@ class UserResponse(Base):
     
     response_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    session_id = Column(Integer, ForeignKey("learning_sessions.session_id"), nullable=True)
     question_id = Column(Integer, ForeignKey("questions.question_id"))
     template_id = Column(Integer, ForeignKey("templates.template_id"))
     concept_id = Column(Integer, ForeignKey("concepts.concept_id"))
@@ -24,6 +25,7 @@ class UserResponse(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("UserModel", back_populates="responses")
+    session = relationship("LearningSession", back_populates="responses")
     question = relationship("Question", back_populates="responses")
     template = relationship("Template", back_populates="responses")
     concept = relationship("Concept", back_populates="responses")

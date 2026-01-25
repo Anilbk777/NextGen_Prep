@@ -66,3 +66,48 @@ def admin_required(current_user: dict = Depends(get_current_user)) -> dict:
         )
     logger.info(f"Admin access granted for user_id: {current_user.get('user_id')}")
     return current_user
+def get_adaptive_engine(db: SessionLocal = Depends(get_db)):
+    from infrastructure.repositories.user_repository import UserRepository
+    from infrastructure.repositories.question_repository import QuestionRepository
+    from infrastructure.repositories.response_repository import ResponseRepository
+    from infrastructure.repositories.learning_session_repository import LearningSessionRepository
+    from infrastructure.adaptive_system.irt import ThreePLIRT
+    from infrastructure.adaptive_system.knowledge_tracing import BayesianKnowledgeTracing
+    from infrastructure.adaptive_system.bandit import ContextualThompsonSampling
+    from infrastructure.adaptive_system.adaptive_engine import AdaptiveLearningEngine
+    from infrastructure.adaptive_system.question_generation import LLMQuestionGenerator, OpenAIChatClient
+    from dotenv import load_dotenv
+    import os
+
+    load_dotenv()
+    
+    irt = ThreePLIRT()
+    kt = BayesianKnowledgeTracing()
+    bandit = ContextualThompsonSampling()
+    
+    # Initialize LLM if key is present
+    llm_gen = None
+    deepseek_key = os.getenv("DEEPSEEK_APIKEY")
+    if deepseek_key:
+        llm_client = OpenAIChatClient(
+            api_key=deepseek_key,
+            base_url="https://api.deepseek.com",
+            model="deepseek-chat"
+        )
+        llm_gen = LLMQuestionGenerator(llm_client)
+
+    user_repo = UserRepository(db)
+    question_repo = QuestionRepository(db)
+    response_repo = ResponseRepository(db)
+    session_repo = LearningSessionRepository(db)
+    
+    return AdaptiveLearningEngine(
+        irt=irt,
+        kt=kt,
+        bandit=bandit,
+        question_generator=llm_gen,
+        user_repo=user_repo,
+        question_repo=question_repo,
+        response_repo=response_repo,
+        session_repo=session_repo
+    )
