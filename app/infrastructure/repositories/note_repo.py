@@ -4,7 +4,7 @@ from infrastructure.db.models.notes import Note
 from infrastructure.db.models.topic_model import Topic
 from presentation.schemas.notes import NoteUpdate
 import logging
-from typing import List
+from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -92,12 +92,29 @@ def get_note_by_id(db: Session, note_id: int) -> Note:
         raise
 
 
-def get_all_notes(db: Session) -> List[Note]:
-    """Get all notes"""
+def get_all_notes(db: Session) -> List[Dict]:
+    """Get all notes with relative file paths"""
     try:
         notes = db.query(Note).all()
+        result = []
+
+        for note in notes:
+            result.append(
+                {
+                    "id": note.id,
+                    "topic_id": note.topic_id,
+                    "title": note.title,
+                    "file_path": note.file_path.replace(
+                        "http://127.0.0.1:8000", ""
+                    ),  # Remove base URL if accidentally stored
+                    "file_size": note.file_size,
+                    "mime_type": note.mime_type,
+                    "created_at": note.created_at,
+                }
+            )
+
         logger.info(f"Retrieved {len(notes)} notes")
-        return notes
+        return result
     except Exception as e:
         logger.error(f"Error fetching all notes: {e}", exc_info=True)
         raise

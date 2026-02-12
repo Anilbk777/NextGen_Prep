@@ -21,6 +21,9 @@ class PracticeQuestionOut(BaseModel):
     question_text: str = Field(..., min_length=1, max_length=1000)
     options: List[PracticeOptionOut] = Field(..., min_items=2, max_items=10)
     order_index: int = Field(..., ge=0, description="0-based order in session")
+    correct_option_id: int = Field(..., gt=0, description="ID of the correct option")
+    explanation: Optional[str] = Field(None, max_length=2000, description="Explanation of the correct answer")
+
 
 # ===================Submit Answer Model=====================================
 class PracticeAnswerIn(BaseModel):

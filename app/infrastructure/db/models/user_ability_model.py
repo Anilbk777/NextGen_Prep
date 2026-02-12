@@ -11,7 +11,7 @@ class UserAbility(Base):
     __tablename__ = "user_abilities"
     
     ability_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id",ondelete="CASCADE"))
     global_ability = Column(Float, default=0.5)  # IRT θ
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

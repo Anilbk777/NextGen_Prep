@@ -18,13 +18,11 @@ class UserModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
-    abilities = relationship("UserAbility", back_populates="user")
-    subjects = relationship("UserSubject", back_populates="user")
-    responses = relationship("UserResponse", back_populates="user")
-    masteries = relationship("UserMastery", back_populates="user")
-    bandit_stats = relationship("BanditStats", back_populates="user")
-    sessions = relationship("LearningSession", back_populates="user")
-    user_topics = relationship("UserTopic", back_populates="user")
+    abilities = relationship("UserAbility", back_populates="user", cascade="all, delete-orphan",passive_deletes=True)
+    responses = relationship("UserResponse", back_populates="user", cascade="all, delete-orphan",passive_deletes=True)
+    masteries = relationship("UserMastery", back_populates="user",cascade="all, delete-orphan",passive_deletes=True)
+    bandit_stats = relationship("BanditStats", back_populates="user",cascade="all, delete-orphan",passive_deletes=True)
+    sessions = relationship("LearningSession", back_populates="user",cascade="all, delete-orphan",passive_deletes=True)
 
     __table_args__ = (
         UniqueConstraint("email", name="uq_email_user"),

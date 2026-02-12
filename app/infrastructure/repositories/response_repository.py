@@ -12,6 +12,16 @@ class ResponseRepository:
         self.db.refresh(response)
         return response
 
+    def get_response(self, user_id: int, question_id: int) -> Optional[UserResponse]:
+        return (
+            self.db.query(UserResponse)
+            .filter(
+                UserResponse.user_id == user_id,
+                UserResponse.question_id == question_id,
+            )
+            .first()
+        )
+
     def get_recent_responses(self, user_id: int, limit: int = 20) -> List[UserResponse]:
         return (
             self.db.query(UserResponse)
@@ -22,21 +32,42 @@ class ResponseRepository:
         )
 
     def get_irt_responses(self, user_id: int) -> List[Dict]:
+        """
+        Build a history of responses with IRT-style parameters.
+
+        Note: the current schema does not store difficulty/discrimination/guessing
+        on the Question table. Instead, we derive difficulty from the associated
+        Template's target_difficulty and use reasonable defaults for the other
+        parameters.
+        """
         rows = (
             self.db.query(UserResponse)
             .filter(UserResponse.user_id == user_id)
             .all()
         )
 
-        return [
-            {
-                "correct": r.correct,
-                "difficulty": r.question.difficulty if r.question else 0.5,
-                "discrimination": r.question.discrimination if r.question else 1.0,
-                "guessing": r.question.guessing if r.question else 0.25,
-            }
-            for r in rows
-        ]
+        history: List[Dict] = []
+        for r in rows:
+            question = r.question
+            template = question.template if question is not None else None
+            base_difficulty = (
+                template.target_difficulty
+                if template is not None and template.target_difficulty is not None
+                else 0.5
+            )
+            # Map [0,1] difficulty onto a rough [-3,3] IRT difficulty scale
+            irt_difficulty = (base_difficulty - 0.5) * 6.0
+
+            history.append(
+                {
+                    "correct": r.correct,
+                    "difficulty": irt_difficulty,
+                    "discrimination": 1.0,
+                    "guessing": 0.25,
+                }
+            )
+
+        return history
 
     def get_bandit_stats(self, user_id: int) -> Dict[int, Dict[str, float]]:
         stats = (

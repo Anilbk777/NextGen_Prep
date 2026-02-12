@@ -11,9 +11,7 @@ class ConceptRepository:
             topic_id=concept_data.topic_id,
             name=concept_data.name,
             description=concept_data.description,
-            prerequisites=concept_data.prerequisites,
-            common_misconceptions=concept_data.common_misconceptions,
-            difficulty_level=concept_data.difficulty_level
+            prerequisites=concept_data.prerequisites
         )
         self.db.add(db_concept)
         self.db.commit()

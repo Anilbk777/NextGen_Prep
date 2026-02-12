@@ -9,12 +9,13 @@ class TemplateRepository:
     def create_template(self, template_data) -> Template:
         db_template = Template(
             concept_id=template_data.concept_id,
-            topic_id=template_data.topic_id,
+            intent=template_data.intent,
             learning_objective=template_data.learning_objective,
             target_difficulty=template_data.target_difficulty,
             question_style=template_data.question_style,
-            answer_format=template_data.answer_format,
-            config_metadata=template_data.config_metadata
+            correct_reasoning=template_data.correct_reasoning,
+            misconception_patterns=template_data.misconception_patterns,
+            answer_format=template_data.answer_format
         )
         self.db.add(db_template)
         self.db.commit()
@@ -24,10 +25,8 @@ class TemplateRepository:
     def get_by_id(self, template_id: int) -> Optional[Template]:
         return self.db.query(Template).filter(Template.template_id == template_id).first()
 
-    def get_all(self, topic_id: Optional[int] = None, concept_id: Optional[int] = None) -> List[Template]:
+    def get_all(self, concept_id: Optional[int] = None) -> List[Template]:
         query = self.db.query(Template)
-        if topic_id:
-            query = query.filter(Template.topic_id == topic_id)
         if concept_id:
             query = query.filter(Template.concept_id == concept_id)
         return query.all()
@@ -54,6 +53,12 @@ class TemplateRepository:
 
     def get_candidate_templates(self, topic_id: int) -> List[Template]:
         """
-        Returns templates for bandit consumption, filtered by topic.
+        Returns templates for a topic by joining with concepts.
         """
-        return self.db.query(Template).filter(Template.topic_id == topic_id).all()
+        from ..db.models import Concept
+        return (
+            self.db.query(Template)
+            .join(Concept, Template.concept_id == Concept.concept_id)
+            .filter(Concept.topic_id == topic_id)
+            .all()
+        )

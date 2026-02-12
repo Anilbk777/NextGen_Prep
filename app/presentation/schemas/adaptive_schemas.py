@@ -3,32 +3,32 @@ from typing import List, Optional, Dict
 from datetime import datetime
 
 class NextQuestionRequest(BaseModel):
-    user_id: int
-    subject_id: int
-    topic_id: int
+    session_id: int
 
 class QuestionOption(BaseModel):
     id: int
     text: str
 
 class NextQuestionResponse(BaseModel):
+    session_id: int
     question_id: int
     template_id: int
     concept_id: int
     question_text: str
     options: List[Dict] # Using Dict to match current model storage
+    correct_option: int  # Index of the correct answer (0-3)
+    explanation: str  # Explanation of the correct answer
     difficulty: float
     learning_objective: str
     metadata: Dict = {}
 
 class ResponseSubmission(BaseModel):
-    user_id: int
+    session_id: int
     question_id: int
     template_id: int
     concept_id: int
     selected_option_index: int
     response_time: float # seconds
-    session_id: Optional[int] = None
 
 class LearningSessionCreate(BaseModel):
     subject_id: int
@@ -54,4 +54,4 @@ class SubmissionResult(BaseModel):
     correct_option_index: int
     explanation: str
     stats: AdaptiveStats
-    session_id: Optional[int] = None
+    session_id: int

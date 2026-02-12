@@ -19,8 +19,6 @@ from .user_ability_model import UserAbility
 from .user_mastery_model import UserMastery
 from .user_model import UserModel
 from .user_response_model import UserResponse
-from .user_subject import UserSubject
-from .user_topic_model import UserTopic  # Assuming rename for consistency
 
 
 __all__ = [
@@ -48,6 +46,4 @@ __all__ = [
     "UserMastery",
     "UserModel",
     "UserResponse",
-    "UserSubject",
-    "UserTopic",
 ]

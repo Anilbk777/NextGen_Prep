@@ -27,12 +27,8 @@ class Topic(Base):
     concepts = relationship(
         "Concept", back_populates="topic", cascade="all, delete-orphan",passive_deletes=True
     )
-    user_topics = relationship(
-        "UserTopic", back_populates="topic", cascade="all, delete-orphan",passive_deletes=True
-    )
-    templates = relationship(
-        "Template", back_populates="topic", cascade="all, delete-orphan"
-    )
+
+
     sessions = relationship(
         "LearningSession", back_populates="topic", cascade="all, delete-orphan"
     )

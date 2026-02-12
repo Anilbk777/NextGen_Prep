@@ -1,7 +1,10 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from infrastructure.db.models.subject_model import PracticeSubject
-from presentation.schemas.subject_schema import PracticeSubjectCreate,PracticeSubjectOut
+from presentation.schemas.subject_schema import (
+    PracticeSubjectCreate,
+    PracticeSubjectOut,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,6 +35,7 @@ def create_practice_subject(
         db.commit()
         db.refresh(subject)
         logger.info(f"Created practice subject: {subject.name} (ID: {subject.id})")
+        logger.info(f"this is the data : {subject}")
         return PracticeSubjectOut.from_orm(subject)
 
     except IntegrityError as e:
@@ -57,9 +61,7 @@ def get_all_practice_subjects(db: Session):
 
 def _get_subject_model(db: Session, subject_id: int) -> PracticeSubject:
     """Internal helper to get the SQLAlchemy model instance"""
-    subject = (
-        db.query(PracticeSubject).filter(PracticeSubject.id == subject_id).first()
-    )
+    subject = db.query(PracticeSubject).filter(PracticeSubject.id == subject_id).first()
     if not subject:
         logger.warning(f"Practice subject with id {subject_id} not found")
         raise ValueError(f"Practice subject with id {subject_id} not found")
@@ -71,7 +73,11 @@ def get_practice_subject_by_id(db: Session, subject_id: int):
     try:
         subject = _get_subject_model(db, subject_id)
         logger.info(f"Retrieved practice subject: {subject.name} (ID: {subject_id})")
-        return PracticeSubjectOut.from_attribute(subject) if hasattr(PracticeSubjectOut, "from_attribute") else PracticeSubjectOut.from_orm(subject)
+        return (
+            PracticeSubjectOut.from_attribute(subject)
+            if hasattr(PracticeSubjectOut, "from_attribute")
+            else PracticeSubjectOut.from_orm(subject)
+        )
     except ValueError:
         raise
     except Exception as e:
@@ -81,7 +87,9 @@ def get_practice_subject_by_id(db: Session, subject_id: int):
         raise
 
 
-def update_practice_subject(db: Session, subject_id: int, subject_data: PracticeSubjectCreate):
+def update_practice_subject(
+    db: Session, subject_id: int, subject_data: PracticeSubjectCreate
+):
     """Update a practice subject"""
     try:
         subject = _get_subject_model(db, subject_id)
@@ -106,7 +114,11 @@ def update_practice_subject(db: Session, subject_id: int, subject_data: Practice
         db.commit()
         db.refresh(subject)
         logger.info(f"Updated practice subject: {subject.name} (ID: {subject_id})")
-        return PracticeSubjectOut.from_attribute(subject) if hasattr(PracticeSubjectOut, "from_attribute") else PracticeSubjectOut.from_orm(subject)
+        return (
+            PracticeSubjectOut.from_attribute(subject)
+            if hasattr(PracticeSubjectOut, "from_attribute")
+            else PracticeSubjectOut.from_orm(subject)
+        )
 
     except IntegrityError as e:
         db.rollback()
@@ -128,7 +140,7 @@ def update_practice_subject(db: Session, subject_id: int, subject_data: Practice
 def delete_practice_subject(db: Session, subject_id: int):
     """Delete a practice subject"""
     try:
-        
+
         subject = _get_subject_model(db, subject_id)
         subject_name = subject.name
         db.delete(subject)

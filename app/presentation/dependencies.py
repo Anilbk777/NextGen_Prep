@@ -4,6 +4,10 @@ from fastapi.security import OAuth2PasswordBearer
 import os
 from infrastructure.security.jwt_service import decode_access_token
 import logging
+from infrastructure.db.models.user_model import UserModel
+
+# from infrastructure.db.session import SessionLocal
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +34,10 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     # --- [ BLOCK 1: TESTING MODE ] ---
     if not token:
         logger.info("Auth bypass triggered: Using Mock Test User (USER)")
-        return {"user_id": 1, "role": "ADMIN"}
+        return {"user_id": 5, "role": "ADMIN"}
     # ----------------------------------
 
-    # --- [ BLOCK 2: PRODUCTION MODE ] ---
+    # # --- [ BLOCK 2: PRODUCTION MODE ] ---
     # if not token:
     #     raise HTTPException(
     #         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -66,33 +70,45 @@ def admin_required(current_user: dict = Depends(get_current_user)) -> dict:
         )
     logger.info(f"Admin access granted for user_id: {current_user.get('user_id')}")
     return current_user
+
+
 def get_adaptive_engine(db: SessionLocal = Depends(get_db)):
     from infrastructure.repositories.user_repository import UserRepository
     from infrastructure.repositories.question_repository import QuestionRepository
     from infrastructure.repositories.response_repository import ResponseRepository
-    from infrastructure.repositories.learning_session_repository import LearningSessionRepository
+    from infrastructure.repositories.learning_session_repository import (
+        LearningSessionRepository,
+    )
     from infrastructure.adaptive_system.irt import ThreePLIRT
-    from infrastructure.adaptive_system.knowledge_tracing import BayesianKnowledgeTracing
+    from infrastructure.adaptive_system.knowledge_tracing import (
+        BayesianKnowledgeTracing,
+    )
     from infrastructure.adaptive_system.bandit import ContextualThompsonSampling
     from infrastructure.adaptive_system.adaptive_engine import AdaptiveLearningEngine
-    from infrastructure.adaptive_system.question_generation import LLMQuestionGenerator, OpenAIChatClient
+    from infrastructure.adaptive_system.question_generation import (
+        LLMQuestionGenerator,
+    )
+    from infrastructure.adaptive_system.huggingface_client import HuggingFaceChatClient
     from dotenv import load_dotenv
     import os
 
     load_dotenv()
-    
+
     irt = ThreePLIRT()
     kt = BayesianKnowledgeTracing()
     bandit = ContextualThompsonSampling()
-    
-    # Initialize LLM if key is present
+
+    # Initialize LLM via Hugging Face + LangChain (ChatHuggingFace)
     llm_gen = None
-    deepseek_key = os.getenv("DEEPSEEK_APIKEY")
-    if deepseek_key:
-        llm_client = OpenAIChatClient(
-            api_key=deepseek_key,
-            base_url="https://api.deepseek.com",
-            model="deepseek-chat"
+    hf_token = os.getenv("HF_TOKEN")
+    if hf_token:
+        llm_client = HuggingFaceChatClient(
+            repo_id="mistralai/Mistral-7B-Instruct-v0.2",
+            task="text-generation",
+            max_new_tokens=512,
+            do_sample=False,
+            repetition_penalty=1.03,
+            huggingfacehub_api_token=hf_token,
         )
         llm_gen = LLMQuestionGenerator(llm_client)
 
@@ -100,7 +116,7 @@ def get_adaptive_engine(db: SessionLocal = Depends(get_db)):
     question_repo = QuestionRepository(db)
     response_repo = ResponseRepository(db)
     session_repo = LearningSessionRepository(db)
-    
+
     return AdaptiveLearningEngine(
         irt=irt,
         kt=kt,
@@ -109,5 +125,22 @@ def get_adaptive_engine(db: SessionLocal = Depends(get_db)):
         user_repo=user_repo,
         question_repo=question_repo,
         response_repo=response_repo,
-        session_repo=session_repo
+        session_repo=session_repo,
     )
+
+
+def get_user_profile(
+    token_payload: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserModel:
+    user_id = token_payload["user_id"]
+
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    return user

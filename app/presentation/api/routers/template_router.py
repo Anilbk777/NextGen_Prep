@@ -21,12 +21,14 @@ def create_template(
 
 @router.get("", response_model=List[TemplateOut])
 def list_templates(
-    topic_id: Optional[int] = Query(None),
     concept_id: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
+    """
+    List templates, optionally filtered by concept.
+    """
     repo = TemplateRepository(db)
-    return repo.get_all(topic_id=topic_id, concept_id=concept_id)
+    return repo.get_all(concept_id=concept_id)
 
 @router.get("/{template_id}", response_model=TemplateOut)
 def get_template(template_id: int, db: Session = Depends(get_db)):

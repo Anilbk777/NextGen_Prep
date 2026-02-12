@@ -16,9 +16,6 @@ class Question(Base):
     options = Column(JSON)  # list of MCQ options
     correct_option = Column(Integer)  # index of correct option
     explanation = Column(Text)
-    difficulty = Column(Float, default=0.5)  # IRT b
-    discrimination = Column(Float, default=1.0)  # IRT a
-    guessing = Column(Float, default=0.25)  # IRT c
-    
+
     template = relationship("Template", back_populates="questions", passive_deletes=True)
     responses = relationship("UserResponse", back_populates="question", cascade="all, delete-orphan")

@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..base import Base
 
+
 class PracticeSessionModel(Base):
     __tablename__ = "practice_sessions"
 
@@ -24,20 +25,19 @@ class PracticeSessionModel(Base):
     topic = relationship("Topic")
 
     attempts = relationship(
-        "AttemptModel",
-        back_populates="practice_session",
-        cascade="all, delete-orphan"
+        "AttemptModel", back_populates="practice_session", cascade="all, delete-orphan"
     )
 
     questions = relationship(
         "PracticeSessionQuestionModel",
         back_populates="practice_session",
         cascade="all, delete-orphan",
-        order_by="PracticeSessionQuestionModel.order_index"
+        order_by="PracticeSessionQuestionModel.order_index",
     )
 
 
 from sqlalchemy import UniqueConstraint
+
 
 class PracticeSessionQuestionModel(Base):
     __tablename__ = "practice_session_questions"
@@ -52,24 +52,11 @@ class PracticeSessionQuestionModel(Base):
     order_index = Column(Integer, nullable=False)  # 0–9
 
     __table_args__ = (
-        UniqueConstraint(
-            "practice_session_id", "mcq_id",
-            name="uq_session_mcq"
-        ),
-        UniqueConstraint(
-            "practice_session_id", "order_index",
-            name="uq_session_order"
-        ),
+        UniqueConstraint("practice_session_id", "mcq_id", name="uq_session_mcq"),
+        UniqueConstraint("practice_session_id", "order_index", name="uq_session_order"),
     )
 
     # Relationships
-    practice_session = relationship(
-        "PracticeSessionModel",
-        back_populates="questions"
-    )
+    practice_session = relationship("PracticeSessionModel", back_populates="questions")
 
-    mcq = relationship(
-        "PracticeMCQ",
-        back_populates="practice_session_questions"
-    )
-    
+    mcq = relationship("PracticeMCQ", back_populates="practice_session_questions")

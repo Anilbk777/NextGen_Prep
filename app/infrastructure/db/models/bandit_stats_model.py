@@ -12,7 +12,7 @@ class BanditStats(Base):
     __tablename__ = "bandit_stats"
     
     bandit_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id",ondelete="CASCADE"))
     template_id = Column(Integer, ForeignKey("templates.template_id"))
     alpha = Column(Float, default=1.0)
     beta = Column(Float, default=1.0)

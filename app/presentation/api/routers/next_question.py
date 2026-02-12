@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict
+import asyncio
 import logging
 
 from app.infrastructure.adaptive_system.adaptive_engine import AdaptiveLearningEngine
@@ -10,12 +11,13 @@ from app.presentation.schemas.adaptive_schemas import (
     SubmissionResult,
     AdaptiveStats,
     LearningSessionCreate,
-    LearningSessionSchema
+    LearningSessionSchema,
 )
 from app.presentation.dependencies import get_current_user, get_adaptive_engine
 
 router = APIRouter(prefix="/learning", tags=["Adaptive Learning"])
 logger = logging.getLogger(__name__)
+
 
 @router.post(
     "/start-session",
@@ -56,36 +58,109 @@ async def get_next_question(
     engine: AdaptiveLearningEngine = Depends(get_adaptive_engine),
 ):
     """
-    Returns the next adaptive MCQ for the authenticated user and given topic.
+    Returns the next adaptive MCQ for the authenticated user within the given session.
+    Enforces a 20-second timeout to prevent hanging on slow LLM generation.
     """
     user_id = current_user["user_id"]
+    
+    logger.info(
+        f"Next question request received from user_id={user_id}, session_id={request.session_id}"
+    )
 
     try:
-        # Note: request.topic_id is used for filtering candidates
-        question = engine.get_next_question(user_id, request.topic_id)
+        # Fetch session to get topic_id and verify ownership
+        logger.debug(f"Fetching session_id={request.session_id} for verification")
+        session_repo = engine._sessions
+        session = session_repo.get_session_by_id(request.session_id)
+
+        if not session:
+            logger.warning(f"Session not found: session_id={request.session_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Session {request.session_id} not found",
+            )
+
+        # Verify session belongs to current user
+        if session.user_id != user_id:
+            logger.warning(
+                f"Session ownership mismatch: session_id={request.session_id}, "
+                f"session.user_id={session.user_id}, current_user_id={user_id}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Session does not belong to current user",
+            )
 
         logger.info(
-            "Next question generated",
+            f"Session verified: session_id={request.session_id}, topic_id={session.topic_id}"
+        )
+
+        # Get next question for this session's topic with 20-second timeout
+        try:
+            logger.debug(
+                f"Starting question generation for user_id={user_id}, topic_id={session.topic_id}"
+            )
+            question = await asyncio.wait_for(
+                asyncio.to_thread(engine.get_next_question, user_id, session.topic_id),
+                timeout=20.0
+            )
+            logger.info(
+                f"Question generation successful: question_id={question.get('question_id')}, "
+                f"template_id={question.get('template_id')}"
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                f"Question generation timeout (20s exceeded) for user_id={user_id}, "
+                f"session_id={request.session_id}, topic_id={session.topic_id}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Question generation is taking longer than expected. Please try again in a moment.",
+            )
+
+        # Normalize options into the API shape (list of dicts) expected by
+        # NextQuestionResponse. The engine/DB may store them as a list of
+        # plain strings (e.g. fallback questions) or already as dicts.
+        raw_options = question.get("options", [])
+        if raw_options and isinstance(raw_options[0], str):
+            logger.debug("Normalizing string options to dict format")
+            question["options"] = [
+                {"id": idx, "text": opt} for idx, opt in enumerate(raw_options)
+            ]
+
+        logger.info(
+            "Next question successfully prepared",
             extra={
                 "user_id": user_id,
+                "session_id": request.session_id,
                 "template_id": question.get("template_id"),
                 "concept_id": question.get("concept_id"),
             },
         )
 
+        # Engine already includes session_id in the payload; avoid passing it twice.
         return NextQuestionResponse(**question)
 
+    except HTTPException:
+        raise
     except ValueError as e:
-        logger.warning("Invalid state for next question", exc_info=e)
+        logger.warning(
+            f"Invalid state for next question: {e}",
+            extra={"user_id": user_id, "session_id": request.session_id},
+            exc_info=True
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
     except Exception as e:
-        logger.error("Adaptive engine failure", exc_info=e)
+        logger.error(
+            f"Adaptive engine failure for user_id={user_id}, session_id={request.session_id}",
+            exc_info=True
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal adaptive engine error",
+            detail="Internal error while generating question. Please try again.",
         )
 
 @router.post(
@@ -104,6 +179,22 @@ async def submit_response(
     user_id = current_user["user_id"]
 
     try:
+        # Verify session belongs to current user
+        session_repo = engine._sessions
+        session = session_repo.get_session_by_id(payload.session_id)
+        
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Session {payload.session_id} not found"
+            )
+        
+        if session.user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Session does not belong to current user"
+            )
+        
         feedback = engine.process_response(
             user_id=user_id,
             question_id=payload.question_id,
@@ -118,6 +209,7 @@ async def submit_response(
             "Response processed",
             extra={
                 "user_id": user_id,
+                "session_id": payload.session_id,
                 "question_id": payload.question_id,
                 "correct": feedback["correct"],
             },
@@ -135,6 +227,9 @@ async def submit_response(
             ),
             session_id=payload.session_id
         )
+
+    except HTTPException:
+        raise
 
     except ValueError as e:
         logger.warning("Invalid response submission", exc_info=e)
@@ -161,10 +256,32 @@ async def end_session(
 ):
     """
     Finalizes a learning session and returns final metrics.
+    Ensures the session exists and belongs to the current user.
     """
+    user_id = current_user["user_id"]
+
     try:
+        # Verify session exists and belongs to the current user
+        session_repo = engine._sessions
+        session = session_repo.get_session_by_id(session_id)
+
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Session {session_id} not found",
+            )
+
+        if session.user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Session does not belong to current user",
+            )
+
         session_data = engine.end_session(session_id)
-        return LearningSessionSchema(**session_data, subject_id=0, topic_id=0) # IDs are in internal data but not in end_session return yet
+        return LearningSessionSchema(**session_data)
+
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:

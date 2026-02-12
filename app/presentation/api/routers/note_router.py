@@ -32,7 +32,7 @@ BASE_URL = "http://127.0.0.1:8000/uploads"  # base URL for frontend
 # get all notes 
 
 @router.get("/all", response_model=List[NoteResponse])
-def get_all(db: Session = Depends(get_db)):
+def get_notes(db: Session = Depends(get_db)):
     try:
         return get_all_notes(db)
     except Exception as e:

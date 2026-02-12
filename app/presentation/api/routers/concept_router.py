@@ -17,7 +17,11 @@ def create_concept(
     Admin: Add a new concept to a topic.
     """
     repo = ConceptRepository(db)
-    return repo.create_concept(concept)
+    try:
+        db_concept = repo.create_concept(concept)
+        return db_concept
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("", response_model=List[ConceptOut])
 def list_concepts(

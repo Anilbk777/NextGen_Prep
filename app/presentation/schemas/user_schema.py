@@ -14,3 +14,13 @@ class LoginRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class UserProfileResponse(BaseModel):
+    id:int
+
+    name: str
+    email: str
+
+    class Config:
+        from_attributes = True  # SQLAlchemy compatibility

@@ -13,8 +13,8 @@ class UserResponse(Base):
     __tablename__ = "user_responses"
     
     response_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    session_id = Column(Integer, ForeignKey("learning_sessions.session_id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id",ondelete="CASCADE"))
+    session_id = Column(Integer, ForeignKey("learning_sessions.session_id"))
     question_id = Column(Integer, ForeignKey("questions.question_id"))
     template_id = Column(Integer, ForeignKey("templates.template_id"))
     concept_id = Column(Integer, ForeignKey("concepts.concept_id"))

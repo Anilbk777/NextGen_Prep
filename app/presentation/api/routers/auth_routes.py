@@ -1,11 +1,13 @@
-from fastapi import APIRouter, HTTPException
-from presentation.schemas.user_schema import SignupRequest, LoginRequest, RefreshRequest
+from fastapi import APIRouter, HTTPException, Depends
+from presentation.schemas.user_schema import SignupRequest, LoginRequest, RefreshRequest, UserProfileResponse
 from application.auth.register_usecase import register_user
 from application.auth.login_usecase import login_user
+from presentation.dependencies import get_user_profile
 from infrastructure.security.jwt_service import (
     decode_refresh_token,
     create_access_token,
 )
+from infrastructure.db.models.user_model import UserModel
 import logging
 
 logger = logging.getLogger(__name__)
@@ -76,3 +78,25 @@ def refresh(request: RefreshRequest):
     except Exception as e:
         logger.warning(f"Token refresh failed: {e}")
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+
+# ================== PROFILE ===================
+@router.get("/profile")
+async def get_profile(
+    current_user: UserModel = Depends(get_user_profile),
+) -> dict:
+    """
+    Returns the authenticated user's profile.
+
+    Authentication is handled by get_current_user:
+    - Extracts JWT from Authorization header
+    - Validates token and expiration
+    - Fetches user from database
+    - Raises 401 or 404 on failure
+    """
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role
+    }

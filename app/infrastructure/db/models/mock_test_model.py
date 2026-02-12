@@ -22,6 +22,7 @@ mock_test_mcq_association = Table(
 )
 
 
+
 class MockTestModel(Base):
     __tablename__ = "mock_tests"
 

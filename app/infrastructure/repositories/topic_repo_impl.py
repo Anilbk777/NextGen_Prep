@@ -26,14 +26,20 @@ def create_topic(db: Session, subject_id: int, topic_data: TopicCreate) -> Topic
             logger.warning(f"Attempt to create duplicate topic: {topic_data.name} for subject_id: {subject_id}")
             raise ValueError(f"Topic '{topic_data.name}' already exists for this subject")
         
+        # Calculate the next order_index for this subject
+        max_order = db.query(Topic).filter(
+            Topic.subject_id == subject_id
+        ).count()
+        
         topic = Topic(
             name=topic_data.name,
-            subject_id=subject_id
+            subject_id=subject_id,
+            order_index=max_order
         )
         db.add(topic)
         db.commit()
         db.refresh(topic)
-        logger.info(f"Created topic: {topic.name} (ID: {topic.id}) for subject_id: {subject_id}")
+        logger.info(f"Created topic: {topic.name} (ID: {topic.id}) for subject_id: {subject_id} with order_index: {max_order}")
         return TopicOut.from_orm(topic)
     
     except IntegrityError as e:
