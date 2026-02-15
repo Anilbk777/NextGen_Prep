@@ -214,6 +214,15 @@ async def bulk_upload_mock_test(
                 data=bulk_data,
                 admin_id=admin["user_id"]
             )
+            # print("Mock Test ID:", mock_test.id)
+            # print("Mock Test Title:", mock_test.title)
+            # print("Questions count:", len(mock_test.questions))
+
+            # for q in mock_test.questions:
+            #     print("Question:", q.question_text)
+            #     for opt in q.options:
+            #         print("   Option:", opt.option_text, "| Correct:", opt.is_correct)
+
             
             return MockTestOut(
                 id=mock_test.id,

@@ -10,7 +10,7 @@ from infrastructure.db.models.mock_test_model import MockTestModel
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
 @router.get("", response_model=dict)

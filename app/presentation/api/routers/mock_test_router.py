@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/mock-tests", tags=["Mock Tests"])
 
+
 # --------------------------------------------------
 # Dependency injection factory
 # --------------------------------------------------
@@ -24,10 +25,15 @@ def get_service(db: Session = Depends(get_db)) -> MockTestSessionService:
     repo = MockTestRepositoryImpl(db)
     return MockTestSessionService(db, repo)
 
+
 # --------------------------------------------------
 # 1. Start / resume session
 # --------------------------------------------------
-@router.post("/{mock_test_id}/start", response_model=StartSessionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{mock_test_id}/start",
+    response_model=StartSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def start_session(
     mock_test_id: int,
     current_user: dict = Depends(get_current_user),
@@ -42,11 +48,20 @@ def start_session(
         session = service.start_session(user_id, mock_test_id)
         return session
     except ValueError as e:
-        logger.warning(f"Validation error starting session for user {current_user.get('user_id')}: {e}")
+        logger.warning(
+            f"Validation error starting session for user {current_user.get('user_id')}: {e}"
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error starting session for user {current_user.get('user_id')}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.")
+        logger.error(
+            f"Unexpected error starting session for user {current_user.get('user_id')}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred.",
+        )
+
 
 # --------------------------------------------------
 # 2. Get session questions
@@ -64,32 +79,58 @@ def get_questions(
         user_id = current_user.get("user_id")
         logger.info(f"User {user_id} fetching questions for session {session_id}")
         questions = service.get_questions(session_id, user_id)
-        
+
         response = []
         for q in questions:
-            # Building OptionSchema list from DB model options
-            options = [
-                {"id": o.id, "option_text": o.option_text} 
-                for o in q.mcq.options
-            ]
-            
+            # Determine which option (if any) was selected by the user for this question
+            # user_selected_id = None
+            # if getattr(q, "answer", None):
+            #     user_selected_id = getattr(q.answer, "selected_option_id", None)
+
+            # Find the correct option id for the MCQ (if any)
+            correct_option_id = None
+            for o in q.mcq.options:
+                if getattr(o, "is_correct", False):
+                    correct_option_id = o.id
+                    break
+
+            # Build OptionSchema list and mark selected + include is_correct
+            options = []
+            for o in q.mcq.options:
+                opt = {
+                    "id": o.id,
+                    "option_text": o.option_text,
+                    "is_correct": bool(getattr(o, "is_correct", False))
+                    # "selected": (user_selected_id == o.id),
+                }
+                options.append(opt)
+
             response.append(
                 QuestionResponse(
                     mcq_id=q.mcq.id,
                     question_text=q.mcq.question_text,
                     options=options,
-                    answered_option_id=q.answer.selected_option_id if q.answer else None,
+                    answered_option_id=correct_option_id,
                     order_index=q.order_index,
                     subject_name=q.subject.name,
                 )
             )
         return response
     except ValueError as e:
-        logger.warning(f"Validation error fetching questions for session {session_id}: {e}")
+        logger.warning(
+            f"Validation error fetching questions for session {session_id}: {e}"
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error fetching questions for session {session_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.")
+        logger.error(
+            f"Unexpected error fetching questions for session {session_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred.",
+        )
+
 
 # --------------------------------------------------
 # 3. Save / update an answer
@@ -117,8 +158,15 @@ def save_answer(
         logger.warning(f"Validation error saving answer for session {session_id}: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error saving answer for session {session_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.")
+        logger.error(
+            f"Unexpected error saving answer for session {session_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred.",
+        )
+
 
 # --------------------------------------------------
 # 4. Final submission
@@ -141,8 +189,14 @@ def submit_session(
         logger.warning(f"Validation error submitting session {session_id}: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error submitting session {session_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.")
+        logger.error(
+            f"Unexpected error submitting session {session_id}: {e}", exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred.",
+        )
+
 
 # --------------------------------------------------
 # 5. Get result (after submission)
@@ -159,18 +213,32 @@ def get_result(
     """
     user_id = current_user.get("user_id")
     session = service.repo.get_session_by_id(db, session_id)
-    
+
     if not session or session.user_id != user_id:
-        logger.warning(f"Result lookup failed: Session {session_id} not found or unauthorized for user {user_id}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
-    
+        logger.warning(
+            f"Result lookup failed: Session {session_id} not found or unauthorized for user {user_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
     if not session.is_submitted:
-        logger.warning(f"Result lookup failed: Session {session_id} is not yet submitted")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session not yet submitted")
-    
+        logger.warning(
+            f"Result lookup failed: Session {session_id} is not yet submitted"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Session not yet submitted"
+        )
+
     try:
         result = service._evaluate(session.id)
         return result
     except Exception as e:
-        logger.error(f"Unexpected error evaluating result for session {session_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.")
+        logger.error(
+            f"Unexpected error evaluating result for session {session_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred.",
+        )

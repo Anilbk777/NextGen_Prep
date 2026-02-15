@@ -1,12 +1,10 @@
-from infrastructure.db.session import SessionLocal
+from app.infrastructure.db.session import SessionLocal
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import os
-from infrastructure.security.jwt_service import decode_access_token
+from app.infrastructure.security.jwt_service import decode_access_token
 import logging
-from infrastructure.db.models.user_model import UserModel
-
-# from infrastructure.db.session import SessionLocal
+from app.infrastructure.db.models.user_model import UserModel
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -24,38 +22,81 @@ def get_db():
         db.close()
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
-    """
-    To switch to testing mode:
-    1. Uncomment the 'TESTING MODE' block
-    2. Comment out the 'PRODUCTION MODE' block
-    """
+# def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+#     """
+#     To switch to testing mode:
+#     1. Uncomment the 'TESTING MODE' block
+#     2. Comment out the 'PRODUCTION MODE' block
+#     """
 
-    # --- [ BLOCK 1: TESTING MODE ] ---
-    if not token:
-        logger.info("Auth bypass triggered: Using Mock Test User (USER)")
-        return {"user_id": 5, "role": "ADMIN"}
-    # ----------------------------------
+#     # --- [ BLOCK 1: TESTING MODE ] ---
+#     if not token:
+#         logger.info("Auth bypass triggered: Using Mock Test User (USER)")
+#         return {"user_id": 200, "role": "ADMIN"}
+#     # ----------------------------------
 
-    # # --- [ BLOCK 2: PRODUCTION MODE ] ---
+#     # # --- [ BLOCK 2: PRODUCTION MODE ] ---
+#     # if not token:
+#     #     raise HTTPException(
+#     #         status_code=status.HTTP_401_UNAUTHORIZED,
+#     #         detail="Not authenticated",
+#     #         headers={"WWW-Authenticate": "Bearer"},
+#     #     )
+#     # ------------------------------------
+
+#     try:
+#         payload = decode_access_token(token)
+#         logger.debug(f"Validated token for user_id: {payload.get('user_id')}")
+#         return payload
+#     except Exception as e:
+#         logger.warning(f"Token validation failed: {e}")
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Could not validate credentials",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> dict:
+
     # if not token:
     #     raise HTTPException(
     #         status_code=status.HTTP_401_UNAUTHORIZED,
     #         detail="Not authenticated",
-    #         headers={"WWW-Authenticate": "Bearer"},
     #     )
-    # ------------------------------------
 
     try:
-        payload = decode_access_token(token)
-        logger.debug(f"Validated token for user_id: {payload.get('user_id')}")
-        return payload
-    except Exception as e:
-        logger.warning(f"Token validation failed: {e}")
+        # payload = decode_access_token(token)
+        # user_id = payload.get("user_id")
+        user_id = 4
+
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload",
+            )
+
+        # 🔥 IMPORTANT: Verify user exists in DB
+        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+            )
+
+        return {
+            "user_id": user.id,
+            "role": user.role,
+        }
+
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
 
@@ -73,24 +114,27 @@ def admin_required(current_user: dict = Depends(get_current_user)) -> dict:
 
 
 def get_adaptive_engine(db: SessionLocal = Depends(get_db)):
-    from infrastructure.repositories.user_repository import UserRepository
-    from infrastructure.repositories.question_repository import QuestionRepository
-    from infrastructure.repositories.response_repository import ResponseRepository
-    from infrastructure.repositories.learning_session_repository import (
+    from app.infrastructure.repositories.user_repository import UserRepository
+    from app.infrastructure.repositories.question_repository import QuestionRepository
+    from app.infrastructure.repositories.response_repository import ResponseRepository
+    from app.infrastructure.repositories.learning_session_repository import (
         LearningSessionRepository,
     )
-    from infrastructure.adaptive_system.irt import ThreePLIRT
-    from infrastructure.adaptive_system.knowledge_tracing import (
+    from app.infrastructure.adaptive_system.irt import ThreePLIRT
+    from app.infrastructure.adaptive_system.knowledge_tracing import (
         BayesianKnowledgeTracing,
     )
-    from infrastructure.adaptive_system.bandit import ContextualThompsonSampling
-    from infrastructure.adaptive_system.adaptive_engine import AdaptiveLearningEngine
-    from infrastructure.adaptive_system.question_generation import (
+    from app.infrastructure.adaptive_system.bandit import ContextualThompsonSampling
+    from app.infrastructure.adaptive_system.adaptive_engine import (
+        AdaptiveLearningEngine,
+    )
+    from app.infrastructure.adaptive_system.question_generation import (
         LLMQuestionGenerator,
     )
-    from infrastructure.adaptive_system.huggingface_client import HuggingFaceChatClient
+    from app.infrastructure.adaptive_system.huggingface_client import (
+        HuggingFaceChatClient,
+    )
     from dotenv import load_dotenv
-    import os
 
     load_dotenv()
 

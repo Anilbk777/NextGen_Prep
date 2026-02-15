@@ -120,7 +120,7 @@ COMMON MISCONCEPTIONS TO ADDRESS:
 
 QUESTION REQUIREMENTS:
 ✓ Write a clear, unambiguous question stem
-✓ Create exactly 4 answer options (A, B, C, D)
+✓ #*IMPORTANT NOTE* : Create exactly 4 answer options (A, B, C, D)
 ✓ ONE correct answer that aligns with correct reasoning criteria
 ✓ THREE distractors that:
   - Are plausible and tempting to students who have misconceptions
@@ -136,10 +136,10 @@ OUTPUT FORMAT (CRITICAL - must be valid JSON with EXACTLY this structure):
 {{
   "question_text": "Clear, specific question stem",
   "options": [
-    "Option A text (do NOT include A), B), C), D) prefixes)",
-    "Option B text",
-    "Option C text",
-    "Option D text"
+    "Option 1 text (do NOT include A), B), C), D) prefixes)",
+    "Option 2 text",
+    "Option 3 text",
+    "Option 4 text"
   ],
   "correct_option": 0,
   "explanation": "Concise explanation (2-3 sentences max) covering why the correct answer is right. Keep it brief."
