@@ -70,3 +70,11 @@ class MockTestRepository(ABC):
     @abstractmethod
     def get_session_by_id(self, db: Session, session_id: int):
         pass
+
+    @abstractmethod
+    def get_mcq_by_id(self, db: Session, mcq_id: int):
+        pass
+
+    @abstractmethod
+    def get_option_by_id(self, db: Session, option_id: int):
+        pass

@@ -10,12 +10,16 @@ from app.infrastructure.repositories.note_repo import (
     get_all_notes,
 )
 from app.infrastructure.db.models.notes import Note
-from app.presentation.schemas.notes import NoteResponse,NoteUpdate
+from app.presentation.schemas.notes import NoteResponse, NoteUpdate
+from app.infrastructure.services.note_indexing_service import NoteIndexingService
 import os
 import logging
 from typing import List
 
 logger = logging.getLogger(__name__)
+
+# Instantiated once — reuses the same embedder/ChromaDB connection for all uploads
+_indexing_service = NoteIndexingService()
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
@@ -27,7 +31,6 @@ def count_notes(db: Session = Depends(get_db)):
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-BASE_URL = "http://127.0.0.1:8000/uploads"  # base URL for frontend
 
 # get all notes 
 
@@ -38,7 +41,7 @@ def get_notes(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Failed to retrieve notes: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.status.HTTP_400_BAD_REQUEST,
             detail=f"Could not retrieve notes: {str(e)}",
         )
 
@@ -51,19 +54,19 @@ def upload_note(
     admin: dict = Depends(admin_required),
 ):
     file_location = os.path.join(UPLOAD_DIR, file.filename)
-    file_url = f"{BASE_URL}/{file.filename}"  # URL to serve to frontend
+    relative_file_path = f"uploads/{file.filename}"
 
     try:
-        # Write file to local disk
+        # 1. Write file to local disk
         with open(file_location, "wb") as f:
             f.write(file.file.read())
 
-        # Save to DB
+        # 2. Save to DB
         note = create_note(
             db=db,
             topic_id=topic_id,
             title=title,
-            file_path=file_url,  # store URL, not local path
+            file_path=relative_file_path,
             file_size=os.path.getsize(file_location),
             mime_type=file.content_type,
         )
@@ -73,12 +76,15 @@ def upload_note(
             f"Failed to upload note '{title}' for topic {topic_id}: {e}", exc_info=True
         )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Could not upload note: {str(e)}",
         )
-    else:
-        logger.info(f"Note '{title}' uploaded successfully for topic {topic_id}")
-        return note
+
+    # 3. Index the file into the RAG vector store (non-blocking — errors are logged, not raised)
+    _indexing_service.index(file_path=file_location)
+
+    logger.info(f"Note '{title}' uploaded and queued for RAG indexing (topic {topic_id})")
+    return note
 
 
 @router.get(
@@ -98,7 +104,7 @@ def get_notes_of_topic(topic_id: int, db: Session = Depends(get_db)):
             f"Failed to retrieve notes for topic {topic_id}: {e}", exc_info=True
         )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Could not retrieve notes: {str(e)}",
         )
 

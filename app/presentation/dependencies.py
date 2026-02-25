@@ -62,16 +62,16 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> dict:
 
-    # if not token:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="Not authenticated",
-    #     )
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
 
     try:
-        # payload = decode_access_token(token)
-        # user_id = payload.get("user_id")
-        user_id = 4
+        payload = decode_access_token(token)
+        user_id = payload.get("user_id")
+        # user_id = 4
 
         if not user_id:
             raise HTTPException(
@@ -79,7 +79,7 @@ def get_current_user(
                 detail="Invalid token payload",
             )
 
-        # 🔥 IMPORTANT: Verify user exists in DB
+
         user = db.query(UserModel).filter(UserModel.id == user_id).first()
 
         if not user:

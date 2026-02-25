@@ -23,6 +23,9 @@ from app.presentation.api.routers import (
     template_router,
     dashboard_router,
     subject_summary_router,
+    analytics_router,
+    recommendation,
+    rag_router
 )
 
 
@@ -77,7 +80,9 @@ app.include_router(concept_router.router)
 app.include_router(template_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(subject_summary_router.router)
-
+app.include_router(analytics_router.router)
+app.include_router(recommendation.router)
+app.include_router(rag_router.router)
 
 # Optional root endpoint
 @app.get("/")

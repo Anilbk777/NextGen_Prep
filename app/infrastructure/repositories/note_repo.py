@@ -105,7 +105,7 @@ def get_all_notes(db: Session) -> List[Dict]:
                     "topic_id": note.topic_id,
                     "title": note.title,
                     "file_path": note.file_path.replace(
-                        "http://127.0.0.1:8000", ""
+                        "http://127.0.0.1:8000/", ""
                     ),  # Remove base URL if accidentally stored
                     "file_size": note.file_size,
                     "mime_type": note.mime_type,

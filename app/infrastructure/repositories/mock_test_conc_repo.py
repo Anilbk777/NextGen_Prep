@@ -12,6 +12,7 @@ from infrastructure.db.models.mock_test_session import (
     MockTestSessionAnswerModel,
     MockTestSessionQuestionModel,
 )
+from infrastructure.db.models.mcq_model import MockTestMCQ, MockTestOption
 
 logger = logging.getLogger(__name__)
 
@@ -282,4 +283,18 @@ class MockTestRepositoryImpl(MockTestRepository):
             raise
         except Exception as e:
             logger.error(f"Unexpected error fetching session {session_id}: {e}", exc_info=True)
+            raise
+
+    def get_mcq_by_id(self, db: Session, mcq_id: int):
+        try:
+            return db.query(MockTestMCQ).filter(MockTestMCQ.id == mcq_id).first()
+        except SQLAlchemyError as e:
+            logger.error(f"Database error fetching MCQ {mcq_id}: {e}", exc_info=True)
+            raise
+
+    def get_option_by_id(self, db: Session, option_id: int):
+        try:
+            return db.query(MockTestOption).filter(MockTestOption.id == option_id).first()
+        except SQLAlchemyError as e:
+            logger.error(f"Database error fetching option {option_id}: {e}", exc_info=True)
             raise

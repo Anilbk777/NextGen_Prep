@@ -126,10 +126,37 @@ class MockTestSessionService:
     ) -> None:
         """
         Saves or updates a user's answer for a specific question in the session.
+        Performance validation to avoid ForeignKeyViolation errors.
         """
         try:
-            # logger.debug(f"Saving answer: session={session_id}, mcq={mcq_id}, opt={selected_option_id}") # Debug level for frequent actions
             session = self._validate_session(session_id, user_id)
+
+            # Validate MCQ exists
+            mcq = self.repo.get_mcq_by_id(self.db, mcq_id)
+            if not mcq:
+                raise ValueError("Invalid question.")
+
+            # Handle skip (clearing answer)
+            if selected_option_id is None:
+                self.repo.upsert_answer(
+                    db=self.db,
+                    session_id=session.id,
+                    mcq_id=mcq_id,
+                    selected_option_id=None,
+                )
+                return
+
+            # Reject invalid integers early (like 0 which causes FK violations)
+            if selected_option_id <= 0:
+                raise ValueError("Invalid option id.")
+
+            option = self.repo.get_option_by_id(self.db, selected_option_id)
+            if not option:
+                raise ValueError("Option does not exist.")
+
+            # Ensure the option belongs to the question
+            if option.mcq_id != mcq_id:
+                raise ValueError("Option does not belong to this question.")
 
             self.repo.upsert_answer(
                 db=self.db,
@@ -137,7 +164,9 @@ class MockTestSessionService:
                 mcq_id=mcq_id,
                 selected_option_id=selected_option_id,
             )
-            # Repo handles commit
+        except ValueError:
+            # Re-raise validation errors for the router to catch
+            raise
         except Exception as e:
             logger.error(f"Error saving answer for session {session_id}: {e}", exc_info=True)
             raise

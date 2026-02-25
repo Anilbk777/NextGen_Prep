@@ -8,6 +8,7 @@ from . import (
     practice_router,
     mock_test_router,
     dashboard_router,
+    rag_router,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "practice_router",
     "mock_test_router",
     "dashboard_router",
+    "rag_router",
 ]

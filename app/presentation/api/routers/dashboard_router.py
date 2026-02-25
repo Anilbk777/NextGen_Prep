@@ -16,14 +16,14 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 @router.get("", response_model=dict)
 def get_dashboard_stats(
     db: Session = Depends(get_db), 
-    admin: dict = Depends(admin_required)
+    # admin: dict = Depends(admin_required)
 ):
     """
     Get dashboard statistics by aggregating counts from all resources.
     Only accessible by admin users.
     """
     try:
-        logger.info(f"Admin {admin['user_id']} fetching dashboard stats")
+        # logger.info(f"Admin {admin['user_id']} fetching dashboard stats")
         
         # Count total users (excluding admins)
         total_users = db.query(UserModel).filter(UserModel.role != "ADMIN").count()
@@ -44,10 +44,10 @@ def get_dashboard_stats(
         total_mock_tests = db.query(MockTestModel).count()
         
         stats = {
-            "services": total_users,  # Mapping to match frontend field names
-            "projects": total_subjects,
-            "messages": total_topics,
-            "teamMembers": total_mcqs,
+            "users": total_users,  # Mapping to match frontend field names
+            "subjects": total_subjects,
+            "topics": total_topics,
+            "mcqs": total_mcqs,
             "notes": total_notes,
             "mockTests": total_mock_tests,
         }
