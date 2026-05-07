@@ -1,7 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends
-from app.presentation.schemas.rag_schema import RAGQuery, RAGResponse
+from typing import List, Optional
+from fastapi.responses import StreamingResponse
+from app.presentation.schemas.rag_schema import RAGQuery, RAGResponse, ChatHistoryResponse
 from app.infrastructure.self_rag.self_rag_main import build_pipeline
+from app.presentation.dependencies import get_current_user, get_db
+from app.infrastructure.repositories.chat_history_repository import ChatHistoryRepository
+from sqlalchemy.orm import Session
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -61,3 +67,84 @@ def ask_question(query_data: RAGQuery):
             status_code=500,
             detail="Chat is not working, please try again in few minutes.",
         )
+
+
+@router.post("/stream")
+async def stream_chat(
+    query_data: RAGQuery,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Streaming endpoint for Self-RAG. 
+    Returns Server-Sent Events (SSE) and persists completion.
+    """
+    if _pipeline is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Self-RAG pipeline is not initialized.",
+        )
+
+    async def event_generator():
+        full_response_parts = []
+        try:
+            async for event in _pipeline.astream(query_data.query):
+                # Buffer tokens for persistence
+                try:
+                    data = json.loads(event)
+                    if data.get("type") == "token":
+                        full_response_parts.append(data.get("content", ""))
+                except:
+                    pass
+
+                # Proper SSE format: data: <payload>\n\n
+                yield f"data: {event}\n\n"
+            
+            # Persistent storage after successful stream
+            if full_response_parts:
+                try:
+                    repo = ChatHistoryRepository(db)
+                    repo.add(
+                        user_id=current_user["user_id"],
+                        user_query=query_data.query,
+                        content="".join(full_response_parts)
+                    )
+                except Exception as save_err:
+                    logger.error(f"Failed to persist chat history: {save_err}")
+
+            # End of stream event
+            yield "event: end\ndata: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Error in streaming: {e}", exc_info=True)
+            yield f"event: error\ndata: {str(e)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream"
+    )
+
+
+@router.get("/conversations", response_model=List[ChatHistoryResponse])
+def get_chat_history(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve chat history for the current authenticated user.
+    """
+    try:
+        repo = ChatHistoryRepository(db)
+        history = repo.get_by_user_id(current_user["user_id"])
+        
+        # Convert created_at to string for schema compatibility
+        return [
+            ChatHistoryResponse(
+                id=h.id,
+                user_query=h.user_query,
+                content=h.content,
+                created_at=h.created_at.isoformat() if h.created_at else ""
+            ) for h in history
+        ]
+    except Exception as e:
+        logger.error(f"Error retrieving chat history: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve chat history.")

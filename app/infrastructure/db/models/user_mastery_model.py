@@ -13,7 +13,7 @@ class UserMastery(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id",ondelete="CASCADE"))
-    concept_id = Column(Integer, ForeignKey("concepts.concept_id"))
+    concept_id = Column(Integer, ForeignKey("concepts.concept_id", ondelete="CASCADE"))
     mastery = Column(Float, default=0.0)  # 0-1
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

@@ -34,8 +34,7 @@ def list_concepts(
     repo = ConceptRepository(db)
     if topic_id:
         return repo.get_by_topic(topic_id)
-    # Could add get_all if needed, for now filtering is essential
-    return []
+    return repo.get_all()
 
 @router.get("/{concept_id}", response_model=ConceptOut)
 def get_concept(concept_id: int, db: Session = Depends(get_db)):

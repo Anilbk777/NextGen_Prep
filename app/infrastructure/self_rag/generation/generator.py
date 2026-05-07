@@ -123,29 +123,36 @@ class Generator:
         return candidates
 
     # ------------------------------------------------------------------
-    # Step 1 branch — Generate without any retrieved context
+    # Step 3 — Generate one answer from one document (Streaming)
     # ------------------------------------------------------------------
+
+    async def astream_with_context(self, query: str, context: str):
+        """
+        Async generator for an answer grounded in a specific context passage.
+        """
+        if not query.strip():
+            raise ValueError("query must not be empty.")
+        if not context.strip():
+            raise ValueError("context must not be empty.")
+
+        async for chunk in self._with_context_chain.astream({"query": query, "context": context}):
+            yield chunk
 
     def generate_without_context(self, query: str) -> str:
         """
         Generate an answer directly from the LLM's internal knowledge.
-        Used when the Critic decides retrieval is not needed (Step 1 → NO).
-
-        Args:
-            query: The user's original question.
-
-        Returns:
-            An answer string based solely on LLM knowledge.
         """
         if not query.strip():
             raise ValueError("query must not be empty.")
 
-        start  = time.perf_counter()
-        answer = self._without_context_chain.invoke({"query": query})
-        elapsed = time.perf_counter() - start
+        return self._without_context_chain.invoke({"query": query}).strip()
 
-        logger.debug(
-            "generate_without_context | query='%s...' | %.3fs",
-            query[:60], elapsed,
-        )
-        return answer.strip()
+    async def astream_without_context(self, query: str):
+        """
+        Async generator for an answer based solely on LLM knowledge.
+        """
+        if not query.strip():
+            raise ValueError("query must not be empty.")
+
+        async for chunk in self._without_context_chain.astream({"query": query}):
+            yield chunk

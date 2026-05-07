@@ -11,3 +11,12 @@ class RAGResponse(BaseModel):
     best_score: float
     retrieval_used: bool
     current_query: str
+
+class ChatHistoryResponse(BaseModel):
+    id: int
+    user_query: str
+    content: str
+    created_at: str
+
+    class Config:
+        from_attributes = True

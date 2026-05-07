@@ -4,7 +4,6 @@ import logging
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 logger = logging.getLogger(__name__)
 
-
 def hash_password(password: str) -> str:
     try:
         return pwd_context.hash(password)
@@ -19,3 +18,5 @@ def verify_password(password: str, hashed: str) -> bool:
     except Exception as e:
         logger.error(f"Failed to verify password: {e}")
         raise
+
+print(pwd_context.hash("test@123"))

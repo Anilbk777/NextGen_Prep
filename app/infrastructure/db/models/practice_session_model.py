@@ -10,7 +10,7 @@ class PracticeSessionModel(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False)
+    topic_id = Column(Integer, ForeignKey("topics.id", ondelete="CASCADE"), nullable=False)
 
     total_questions = Column(Integer, default=10)
     current_index = Column(Integer, default=0)
@@ -45,9 +45,9 @@ class PracticeSessionQuestionModel(Base):
     id = Column(Integer, primary_key=True)
 
     practice_session_id = Column(
-        Integer, ForeignKey("practice_sessions.id"), nullable=False
+        Integer, ForeignKey("practice_sessions.id", ondelete="CASCADE"), nullable=False
     )
-    mcq_id = Column(Integer, ForeignKey("practice_mcqs.id"), nullable=False)
+    mcq_id = Column(Integer, ForeignKey("practice_mcqs.id", ondelete="CASCADE"), nullable=False)
 
     order_index = Column(Integer, nullable=False)  # 0–9
 

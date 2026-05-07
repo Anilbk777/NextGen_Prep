@@ -17,6 +17,7 @@ class TopicOut(BaseModel):
     id: int 
     name: str = Field(..., min_length=1,max_length=300)
     subject_id: int = Field(..., gt=0)
+    order_index: int = Field(default=0)
 
     # convert the name of the topic to title case 
     @field_validator("name", mode="before")

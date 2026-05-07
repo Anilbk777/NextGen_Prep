@@ -13,12 +13,12 @@ class AttemptModel(Base):
 
     practice_session_id = Column(
         Integer,
-        ForeignKey("practice_sessions.id"),
+        ForeignKey("practice_sessions.id", ondelete="CASCADE"),
         nullable=True
     )
 
-    mcq_id = Column(Integer, ForeignKey("practice_mcqs.id"), nullable=False)
-    selected_option_id = Column(Integer, ForeignKey("options.id"), nullable=False)
+    mcq_id = Column(Integer, ForeignKey("practice_mcqs.id", ondelete="CASCADE"), nullable=False)
+    selected_option_id = Column(Integer, ForeignKey("options.id", ondelete="CASCADE"), nullable=False)
 
     is_correct = Column(Boolean, nullable=False)
     mode = Column(String, nullable=False)  # 'practice' | 'mock_test'

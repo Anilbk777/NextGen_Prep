@@ -93,6 +93,17 @@ class Critic:
         )
         return token
 
+    async def ashould_retrieve(self, query: str) -> RetrieveToken:
+        """
+        Async version of should_retrieve.
+        """
+        if not query.strip():
+            raise ValueError("query must not be empty.")
+
+        raw = await self._should_retrieve_chain.ainvoke({"query": query})
+        token_str = raw.strip().lower()
+        return RetrieveToken.YES if token_str == "yes" else RetrieveToken.NO
+
     # ------------------------------------------------------------------
     # Step 2 — Is this document relevant to the query?
     # ------------------------------------------------------------------
@@ -124,6 +135,17 @@ class Critic:
             "is_relevant | token=%s | %.3fs", token.value, elapsed
         )
         return token
+
+    async def ais_relevant(self, query: str, document: str) -> ISRELToken:
+        """
+        Async version of is_relevant.
+        """
+        if not query.strip() or not document.strip():
+            raise ValueError("query and document must not be empty.")
+
+        raw = await self._is_relevant_chain.ainvoke({"query": query, "document": document})
+        token_str = raw.strip().lower()
+        return ISRELToken.RELEVANT if token_str == ISRELToken.RELEVANT.value else ISRELToken.IRRELEVANT
 
     # ------------------------------------------------------------------
     # Step 4 — Is the answer grounded in the document? (hallucination check)

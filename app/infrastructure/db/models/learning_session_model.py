@@ -9,8 +9,8 @@ class LearningSession(Base):
     
     session_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id",ondelete="CASCADE"))
-    subject_id = Column(Integer, ForeignKey("practice_subjects.id"))
-    topic_id = Column(Integer, ForeignKey("topics.id"))
+    subject_id = Column(Integer, ForeignKey("practice_subjects.id", ondelete="CASCADE"))
+    topic_id = Column(Integer, ForeignKey("topics.id", ondelete="CASCADE"))
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime)
     questions_attempted = Column(Integer, default=0)

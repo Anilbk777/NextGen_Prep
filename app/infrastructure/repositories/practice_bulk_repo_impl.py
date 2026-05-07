@@ -9,6 +9,8 @@ from presentation.schemas.mcq_schema import PracticeMCQCreate, PracticeOptionCre
 from presentation.schemas.practice_bulk_schema import PracticeBulkUploadResponse
 from infrastructure.repositories.mcq_repo_impl import create_mcq
 
+from infrastructure.services.file_utils import read_csv_robustly
+
 logger = logging.getLogger(__name__)
 
 class PracticeBulkRepository:
@@ -54,8 +56,8 @@ class PracticeBulkRepository:
     def _read_and_clean_df(self, file_content: bytes, filename: str) -> pd.DataFrame:
         if filename.endswith(".csv"):
             try:
-                df = pd.read_csv(
-                    io.BytesIO(file_content), on_bad_lines="skip", engine="python"
+                df = read_csv_robustly(
+                    file_content, on_bad_lines="skip", engine="python"
                 )
             except Exception as e:
                 raise ValueError(f"Error parsing CSV: {e}")

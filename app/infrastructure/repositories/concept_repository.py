@@ -24,6 +24,9 @@ class ConceptRepository:
     def get_by_topic(self, topic_id: int) -> List[Concept]:
         return self.db.query(Concept).filter(Concept.topic_id == topic_id).all()
 
+    def get_all(self) -> List[Concept]:
+        return self.db.query(Concept).all()
+
     def update_concept(self, concept_id: int, concept_data) -> Optional[Concept]:
         db_concept = self.get_by_id(concept_id)
         if not db_concept:

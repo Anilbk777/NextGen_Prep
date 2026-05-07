@@ -21,6 +21,8 @@ import pandas as pd
 import io
 from pydantic import ValidationError
 
+from infrastructure.services.file_utils import read_csv_robustly
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bulk-upload", tags=["bulk_uplod_mcqs"])
 
@@ -59,12 +61,6 @@ async def bulk_upload_mock_test(
 ):
     """
     Bulk upload mock test with questions from CSV/XLSX file.
-
-    Expected file columns:
-    - subject: Subject name (will be auto-created if it doesn't exist)
-    - question_text: The question text
-    - option1, option2, option3, option4: The four options
-    - correct_answer: the exact text of the correct option
     """
     try:
         logger.info(
@@ -77,8 +73,8 @@ async def bulk_upload_mock_test(
         # Parse based on file type
         if file.filename.endswith(".csv"):
             try:
-                df = pd.read_csv(
-                    io.BytesIO(file_content), on_bad_lines="skip", engine="python", keep_default_na=False
+                df = read_csv_robustly(
+                    file_content, on_bad_lines="skip", engine="python", keep_default_na=False
                 )
             except Exception as e:
                 logger.error(f"Error parsing CSV: {e}")

@@ -1,6 +1,10 @@
 import sys
 import os
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables early so module-level initialisations (like Self-RAG) can access them.
+load_dotenv()
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles

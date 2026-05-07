@@ -1,5 +1,7 @@
 from .attempt_model import AttemptModel
 from .bandit_stats_model import BanditStats
+from .blacklisted_token_model import BlacklistedTokenModel
+from .chat_history_model import ChatHistoryModel
 from .concept_model import Concept
 from .learning_session_model import LearningSession
 from .mcq_model import PracticeMCQ, MockTestMCQ, OptionModel, MockTestOption
@@ -46,4 +48,6 @@ __all__ = [
     "UserMastery",
     "UserModel",
     "UserResponse",
+    "ChatHistoryModel",
+    "BlacklistedTokenModel",
 ]

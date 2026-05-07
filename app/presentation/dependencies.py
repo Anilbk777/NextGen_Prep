@@ -69,9 +69,17 @@ def get_current_user(
         )
 
     try:
+        from app.infrastructure.repositories.blacklist_repository import BlacklistRepository
+        blacklist_repo = BlacklistRepository(db)
+        if blacklist_repo.is_token_blacklisted(token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been blacklisted",
+            )
+
         payload = decode_access_token(token)
         user_id = payload.get("user_id")
-        # user_id = 4
+        # user_id = 5
 
         if not user_id:
             raise HTTPException(

@@ -36,12 +36,14 @@ from ..generation.generator     import Generator
 from ..generation.query_rewriter import QueryRewriter
 from ..reflection.critic         import Critic
 from ..reflection.tokens         import (
-    ISUPPToken, ISUSEToken, RetrieveToken,
+    ISRELToken, ISUPPToken, ISUSEToken, RetrieveToken,
     ISSUP_SCORES, normalise_isuse,
 )
 from ..retrieval.retriever       import Retriever
 from .. import config
 from .state                      import RAGState
+import json
+from typing import AsyncGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +183,75 @@ class SelfRAGPipeline:
             state.succeeded, state.best_score, elapsed,
         )
         return state
+
+    async def astream(self, query: str) -> AsyncGenerator[str, None]:
+        """
+        Execute the Self-RAG pipeline for a single query and yield status/tokens.
+        """
+        if not query.strip():
+            yield json.dumps({"type": "error", "content": "query must not be empty."})
+            return
+
+        logger.info("=== Self-RAG pipeline astream started | query='%s...' ===", query[:70])
+        
+        state = RAGState(original_query=query, current_query=query)
+
+        # Step 1 - Retrieval decision
+        yield json.dumps({"type": "status", "content": "Deciding whether to retrieve..."})
+        token = await self._critic.ashould_retrieve(state.current_query)
+        state.retrieval_used = (token == RetrieveToken.YES)
+
+        if not state.retrieval_used:
+            yield json.dumps({"type": "status", "content": "Answering from knowledge..."})
+            async for chunk in self._generator.astream_without_context(state.current_query):
+                yield json.dumps({"type": "token", "content": chunk})
+            yield json.dumps({"type": "status", "content": "Done."})
+            return
+
+        # Steps 2–6 loop
+        while state.revision_attempt < config.MAX_REVISION_TRIES:
+            state.revision_attempt += 1
+            yield json.dumps({"type": "status", "content": f"Retrieving documents (Attempt {state.revision_attempt})..."})
+            
+            # Step 2 - Retrieve and Filter
+            state.retrieved_docs = self._retriever.retrieve(state.current_query)
+            if not state.retrieved_docs:
+                yield json.dumps({"type": "status", "content": "No documents found. Rewriting query..."})
+                state.current_query = await self._rewriter.arewrite(
+                    query=state.current_query, 
+                    failed_answer="No documents found", 
+                    attempt=state.revision_attempt
+                )
+                continue
+
+            relevant = []
+            for doc in state.retrieved_docs:
+                rel_token = await self._critic.ais_relevant(state.current_query, doc.page_content)
+                if rel_token == ISRELToken.RELEVANT:
+                    relevant.append(doc)
+            
+            state.relevant_docs = relevant
+
+            if not state.relevant_docs:
+                yield json.dumps({"type": "status", "content": "No relevant documents found. Rewriting query..."})
+                state.current_query = await self._rewriter.arewrite(
+                    query=state.current_query, 
+                    failed_answer="No relevant documents found", 
+                    attempt=state.revision_attempt
+                )
+                continue
+
+            # For streaming, we pick the most relevant doc and stream immediately
+            # In a full Self-RAG we'd generate all, rank, then stream (impossible).
+            # So we take the first relevant doc (highest similarity).
+            yield json.dumps({"type": "status", "content": "Generating answer..."})
+            async for chunk in self._generator.astream_with_context(state.current_query, state.relevant_docs[0].page_content):
+                yield json.dumps({"type": "token", "content": chunk})
+            
+            yield json.dumps({"type": "status", "content": "Done."})
+            return
+
+        yield json.dumps({"type": "error", "content": "Maximum revision attempts reached without finding relevant information."})
 
     # ===================================================================
     # Private step methods
